@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Aceso Intelligence</title>
+  <meta name="description" content="Aceso Global opportunity intelligence workspace">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="workflow-polish.css">
+</head>
+<body>
+  <header class="masthead">
+    <div class="brand"><img src="client/assets/aceso-official-logo.png" alt="Aceso Global"><span>Intelligence</span></div>
+    <div class="mast-actions"><span class="privacy">◈ Private pilot</span><button class="icon-btn" aria-label="Notifications">♧<i></i></button><span class="avatar">BD</span></div>
+  </header>
+
+  <nav class="topnav" aria-label="Main navigation">
+    <div class="navlinks">
+      <button class="active" data-view="today">Today</button>
+      <button data-view="opportunities">Opportunities</button>
+      <button data-view="pipeline">Pipeline &amp; Proposals</button>
+      <button data-view="criteria">Criteria</button>
+      <button data-view="dashboard">Dashboard</button>
+      <button data-view="knowledge">Knowledge base</button>
+    </div>
+    <div class="agent-run"><span class="live-dot"></span><b>AGENT ACTIVE</b><span><small>Last search</small>Sep 7 · 07:00</span><span><small>Next search</small>Sep 10 · 07:00</span><button id="searchNow">✦ Search now</button></div>
+  </nav>
+
+  <main id="app">
+    <section class="view active" id="todayView" data-page="today">
+      <div class="today-hero page-shell today-master">
+        <div class="hero-copy">
+          <p class="eyebrow">TODAY <span>| &nbsp; GLOBAL OPPORTUNITIES BRIEFING</span></p>
+          <h1>9 opportunities ready<br>for review today</h1>
+          <p>The agent screened 214 tenders across 38 countries and documented why every opportunity qualified or was excluded.</p>
+          <div class="daily-brief">
+            <span class="brief-icon">☼</span><div><small>YOUR DAILY BRIEFING</small><b id="greeting">Good morning, Liz. Here is what matters most today.</b><p>Two opportunities need a decision and one proposal is approaching its deadline.</p></div><button data-jump="opportunities">Review now&nbsp;&nbsp; →</button>
+          </div>
+          <div class="today-impact"><div><span>◷</span><b>~9 h / week</b><small>Analyst time saved from<br>search and screening</small></div><div><span>▤</span><b>37 bids</b><small>Automatically excluded<br>with traceable reasons</small></div><div><span>▥</span><b>$11.4M</b><small>Combined value of<br>eligible opportunities</small></div></div>
+        </div>
+        <div class="radar-card">
+          <div class="map-head"><div><small>GLOBAL OPPORTUNITY RADAR</small><b>Real-time view of regions with relevant activity</b></div><button>Last 30 days&nbsp;⌄</button></div>
+          <img src="assets/aceso-dashboard-globe-reference.png" alt="Curved global opportunity map with illuminated activity by country">
+          <div class="map-key"><span><i class="yellow"></i>High activity</span><span><i class="blue"></i>Moderate activity</span><span><i class="dim"></i>Low activity</span></div><small class="map-signoff">Global opportunities. Greater impact.</small>
+        </div>
+      </div>
+
+      <div class="page-shell today-zone">
+        <div class="section-title"><div><p class="eyebrow">TODAY ACROSS THE PIPELINE</p><h2>Where active work stands now</h2></div><button class="history-pill" id="historyFromToday">◷ &nbsp; Opportunity history</button></div>
+        <div class="stage-strip">
+          <button data-stage="Qualified"><span>5</span><div><b>Under review</b><small>2 decisions due today</small></div><em>→</em></button>
+          <button data-stage="Proposal"><span>3</span><div><b>Proposals in progress</b><small>68% avg. completion</small></div><em>→</em></button>
+          <button data-stage="Submitted"><span>2</span><div><b>Submitted</b><small>Awaiting response</small></div><em>→</em></button>
+          <button data-stage="Awarded"><span>1</span><div><b>Awarded</b> <small>Added this month</small></div><em>→</em></button>
+        </div>
+
+        <div class="section-title compact"><div><p class="eyebrow">OPPORTUNITIES UNDER REVIEW</p><p>Review and take action on opportunities identified by your agent.</p></div><div class="table-tools"><input type="search" id="todaySearch" placeholder="Search opportunities, funder, country or keyword..."><button>▽ &nbsp;Filters</button><button>Sort: Relevance&nbsp;⌄</button></div></div>
+        <div class="opportunity-table-shell">
+          <div class="selection-bar" id="selectionBar"><span><b id="selectedCount">0 selected</b><small>Select opportunities to submit for human review</small></span><button id="sendReview" disabled>Submit for review&nbsp;&nbsp;→</button></div>
+          <div class="list-columns"><span></span><span>FIT</span><span>OPPORTUNITY</span><span>VALUE / DEADLINE</span><span>REVIEW STATUS</span><span></span></div>
+          <div class="opportunity-list" id="todayList"></div>
+          <button class="excluded-toggle" id="excludedToggle"><span>×</span><div><b>37 automatically excluded opportunities</b><small>Audit criteria and recover any case</small></div><em>⌄</em></button>
+          <div class="excluded-content" id="excludedContent"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view page-shell" id="opportunitiesView" data-page="opportunities">
+      <div class="page-intro"><p class="eyebrow">OPPORTUNITIES</p><h1>Every qualified opportunity, in one place.</h1><p>Compare fit, source evidence and review status without losing the broader pipeline context.</p></div>
+      <div class="subnav"><button class="active" data-opp-tab="all">All opportunities <span>9</span></button><button data-opp-tab="discarded">Discarded <span>37</span></button><button data-opp-tab="history">History</button></div>
+      <div id="opportunityTabContent"></div>
+    </section>
+
+    <section class="view page-shell" id="pipelineView" data-page="pipeline">
+      <div class="visual-header pipeline-header approved-pipeline-hero"><div><p class="eyebrow">PIPELINE &amp; PROPOSALS</p><h1>From qualified opportunity<br>to submitted proposal</h1><p>One workspace for decisions, ownership, proposal production<br>and expected results.</p></div><img src="assets/aceso-pipeline-health-hero.png" alt="Global healthcare intelligence network"></div>
+      <div class="pipeline-metrics" id="pipelineMetrics"></div>
+      <section class="pipeline-stage-card"><div class="section-title compact"><div><p class="eyebrow">SELECTED STAGE</p><h2 id="selectedStageTitle">Qualified opportunities</h2><p id="selectedStageCopy">Review and take action on opportunities that meet your criteria and are ready for internal review.</p></div><div class="table-tools"><input type="search" placeholder="Search opportunities, funder, country or keyword..."><button>▽ &nbsp;Filters</button><button>Sort: Relevance&nbsp;⌄</button></div></div><div class="pipeline-table" id="pipelineTable"></div></section>
+      <div class="split-panels pipeline-workspace">
+        <section class="workspace-card"><div class="section-title compact"><div><p class="eyebrow">PROPOSAL PRODUCTION</p><h2>3 active proposals</h2><p>Track progress, collaborate and get to submission.</p></div><button class="text-link">View all</button></div><div id="proposalPlans"></div></section>
+        <section class="delivery-plan-card" id="deliveryPlan"></section>
+      </div>
+    </section>
+
+    <section class="view" id="criteriaView" data-page="criteria">
+      <div class="criteria-hero"><div class="page-shell"><p class="eyebrow">CRITERIA</p><h1 id="criteriaTitle">Agent Decision Logic</h1><p id="criteriaSubtitle">A practical guide showing every analyst what the agent checks, in what order, and how uncertainty is handled.</p></div></div>
+      <div class="criteria-layout page-shell">
+        <aside class="criteria-nav">
+          <button class="active" data-criteria="logic">⌘ <span>Decision logic</span></button>
+          <button data-criteria="scoring">▥ <span>Scoring &amp; Fit</span></button>
+          <button data-criteria="mandatory">▣ <span>Mandatory criteria</span></button>
+          <button data-criteria="exclusions">⊘ <span>Exclusions</span></button>
+          <button data-criteria="uncertainty">◉ <span>Uncertainty</span></button>
+          <button data-criteria="human">♙ <span>Human review</span></button>
+          <div class="criteria-help"><b>Need to adjust a criterion?</b><p>Request a change and document why.</p><button>Suggest update →</button></div>
+        </aside>
+        <article id="criteriaContent"></article>
+        <aside class="criteria-example"><small>WORKED EXAMPLE</small><span>Qualified</span><h3>“National firm only” does not always mean automatic exclusion</h3><p>If the notice requires a local entity but accepts consortiums, the agent confirms whether Aceso can partner rather than rejecting the opportunity.</p><hr><b>Related resources</b><a href="#">Eligibility checklist ↗</a><a href="#">Common exclusion patterns ↗</a><a href="#">Partner validation process ↗</a><div class="ask-box"><b>Have a complex case?</b><p>Ask the agent to explain its reasoning.</p><button>Open in chat →</button></div></aside>
+      </div>
+    </section>
+
+    <section class="view page-shell" id="dashboardView" data-page="dashboard">
+      <div class="dashboard-hero approved-dashboard"><div><p class="eyebrow">BUSINESS DEVELOPMENT INTELLIGENCE</p><h1>Where is Aceso finding the strongest opportunities — and converting them into awarded work?</h1><p>Global insights. Higher impact. A clearer path from opportunity to awarded work.</p><button class="secondary">Explore opportunities&nbsp;&nbsp;→</button></div><div class="dashboard-map curved"><img src="assets/aceso-dashboard-globe-reference.png" alt="Global opportunity activity on a curved illuminated globe"><div class="map-title"><b>GLOBAL OPPORTUNITY ACTIVITY</b><small>Opportunity volume (last 12 months)</small><span>● High&nbsp;&nbsp; ◉ Medium&nbsp;&nbsp; ○ Low</span></div></div></div>
+      <div class="kpi-row"><div><small>OPPORTUNITIES IDENTIFIED</small><b>214</b><em>↑ +12% &nbsp;vs. prior 12 months</em></div><div><small>PURSUITS APPROVED</small><b>31</b><em>↑ +19% &nbsp;vs. prior 12 months</em></div><div><small>PROPOSALS SUBMITTED</small><b>25</b><em>↑ +25% &nbsp;vs. prior 12 months</em></div><div><small>PROJECTS AWARDED</small><b>7</b><em>↑ +40% &nbsp;vs. prior 12 months</em></div><div><small>AWARDED VALUE</small><b>$3.1M</b><em>↑ +160% &nbsp;vs. prior 12 months</em></div></div>
+      <div class="dashboard-row three">
+        <section class="chart-card"><p class="eyebrow">CONVERSION FUNNEL</p><small>From identified opportunities to awarded projects</small><div class="funnel exact"><div style="--w:100%"><span>Identified</span><b>214</b></div><div style="--w:55%"><span>Approved</span><b>31</b><em>14.5%</em></div><div style="--w:45%"><span>Submitted</span><b>25</b><em>80.6%</em></div><div style="--w:22%"><span>Awarded</span><b>7</b><em>28.0%</em></div></div></section>
+        <section class="chart-card"><p class="eyebrow">TOP COUNTRIES BY OPPORTUNITY VOLUME</p><small>Identified opportunities (last 12 months)</small><div class="rank-list"><div><b>1</b><span>🇰🇪 &nbsp;Kenya</span><em>28</em><i style="--w:100%"></i></div><div><b>2</b><span>🇳🇬 &nbsp;Nigeria</span><em>24</em><i style="--w:82%"></i></div><div><b>3</b><span>🇮🇳 &nbsp;India</span><em>18</em><i style="--w:60%"></i></div><div><b>4</b><span>🇨🇴 &nbsp;Colombia</span><em>16</em><i style="--w:50%"></i></div><div><b>5</b><span>🇪🇹 &nbsp;Ethiopia</span><em>14</em><i style="--w:42%"></i></div></div><button class="text-link">View all countries&nbsp;&nbsp;→</button></section>
+        <section class="chart-card"><p class="eyebrow">TOP FUNDERS BY PURSUED VALUE</p><small>Total pursued value (approved, last 12 months)</small><div class="rank-list"><div><b>1</b><span>World Bank</span><em>$12.4M</em><i style="--w:100%"></i></div><div><b>2</b><span>USAID</span><em>$8.7M</em><i style="--w:75%"></i></div><div><b>3</b><span>Global Fund</span><em>$6.1M</em><i style="--w:55%"></i></div><div><b>4</b><span>Gates Foundation</span><em>$4.8M</em><i style="--w:39%"></i></div><div><b>5</b><span>UNICEF</span><em>$3.9M</em><i style="--w:30%"></i></div></div><button class="text-link">View all funders&nbsp;&nbsp;→</button></section>
+        <aside class="copilot-insight"><p class="eyebrow">✦ &nbsp;ACESO COPILOT</p><h3>Key insight</h3><p>Opportunities in Africa are 2.3× more likely to convert to awarded projects than the global average.</p><hr><b>Recommended action</b><p>Prioritize early engagement in Kenya, Nigeria and Ethiopia, where pipeline quality and funder activity are strongest.</p><button>Explore opportunities in Africa&nbsp;&nbsp;→</button></aside>
+      </div>
+      <div class="dashboard-page-two">
+        <div class="capacity-intro"><p class="eyebrow">BUSINESS DEVELOPMENT INTELLIGENCE</p><h2>Which live opportunities deserve capacity right now?</h2><p>Spot the highest-value opportunities, balance delivery load, and focus your team where it matters most.</p><button class="secondary">Explore opportunities&nbsp;&nbsp;→</button></div>
+        <section class="priority-matrix"><div class="chart-title"><p class="eyebrow">OPPORTUNITY PRIORITY MATRIX</p><small>Strategic fit vs. delivery load (active opportunities)</small><span><i class="priority-dot"></i>Priority opportunity&nbsp;&nbsp;&nbsp;<i></i>Other opportunity</span></div><div class="matrix-grid"><span class="axis-y">Strategic fit</span><span class="axis-x">Estimated delivery load (team days)</span><button class="bubble b-rwanda">Rwanda</button><button class="bubble b-ethiopia">Ethiopia</button><button class="bubble b-colombia">Colombia</button><button class="bubble priority b-kenya">Kenya</button><button class="bubble b-nigeria">Nigeria</button><button class="bubble b-india">India</button><button class="bubble priority large b-world">World Bank</button><button class="bubble large b-usaid">USAID</button><button class="bubble b-gates">Gates Foundation</button><div class="matrix-callout">High strategic fit<br>Manageable delivery load<br><b>→ Prioritize now</b></div></div></section>
+      </div>
+      <div class="dashboard-row lower">
+        <section class="chart-card heatmap-card"><p class="eyebrow">SUBMISSION TIMING HEATMAP</p><small>When proposal deadlines concentrate (next 6 months)</small><div class="heatmap" aria-label="Submission timing heatmap"><span></span><b>Sep</b><b>Oct</b><b>Nov</b><b>Dec</b><b>Jan</b><b>Feb</b><em>World Bank</em><i class="h1"></i><i class="h2"></i><i class="h4"></i><i class="h2"></i><i class="h1"></i><i class="h1"></i><em>USAID</em><i class="h1"></i><i class="h1"></i><i class="h2"></i><i class="h2"></i><i class="h3"></i><i class="h4"></i><em>Global Fund</em><i class="h1"></i><i class="h3"></i><i class="h5"></i><i class="h2"></i><i class="h2"></i><i class="h2"></i><em>Gates Foundation</em><i class="h1"></i><i class="h2"></i><i class="h3"></i><i class="h5"></i><i class="h2"></i><i class="h2"></i><em>UNICEF</em><i class="h1"></i><i class="h2"></i><i class="h3"></i><i class="h2"></i><i class="h2"></i><i class="h1"></i><em>WHO</em><i class="h1"></i><i class="h3"></i><i class="h2"></i><i class="h2"></i><i class="h1"></i><i class="h1"></i><em>EU</em><i class="h1"></i><i class="h2"></i><i class="h3"></i><i class="h1"></i><i class="h3"></i><i class="h2"></i><em>AfDB</em><i class="h1"></i><i class="h2"></i><i class="h2"></i><i class="h2"></i><i class="h2"></i><i class="h1"></i></div></section>
+        <section class="chart-card"><p class="eyebrow">CONVERSION RATE BY COUNTRY</p><small>From submitted proposals to awarded projects (last 12 months)</small><div class="country-rates exact"><span><b>62%</b><i style="--p:62%"></i><small>🇰🇪<br>Kenya</small></span><span><b>48%</b><i style="--p:48%"></i><small>🇷🇼<br>Rwanda</small></span><span><b>36%</b><i style="--p:36%"></i><small>🇳🇬<br>Nigeria</small></span><span><b>32%</b><i style="--p:32%"></i><small>🇨🇴<br>Colombia</small></span><span><b>28%</b><i style="--p:28%"></i><small>🇪🇹<br>Ethiopia</small></span><span><b>24%</b><i style="--p:24%"></i><small>🇮🇳<br>India</small></span></div></section>
+        <div class="dashboard-side"><section class="ask-copilot"><h3>✦ &nbsp;Ask Aceso Copilot anything</h3><p>Get instant insights on countries, deadlines, conversion, capacity and funders.</p><button>Which opportunities should we prioritize? →</button><button>What are the upcoming deadlines this month? →</button><button>Show me our conversion rate by country →</button><button>Do we have capacity for a large proposal? →</button></section><section class="recommended-actions"><p class="eyebrow">RECOMMENDED ACTIONS</p><div><b>1</b><span><strong>Prioritize Kenya and World Bank opportunities</strong><small>High strategic fit and manageable delivery load.</small></span></div><div><b>2</b><span><strong>Prepare for October deadline surge</strong><small>Increase proposal resources for priority funders.</small></span></div></section></div>
+      </div>
+    </section>
+
+    <section class="view page-shell" id="knowledgeView" data-page="knowledge">
+      <div class="knowledge-heading"><div><p class="eyebrow">ACESO KNOWLEDGE BASE</p><h1>Projects and team experience</h1><p>Maintain the evidence the agent uses to recommend projects, specialists and reusable experience.</p></div><button class="primary" id="addKnowledgeRecord">＋ Add record</button></div>
+      <nav class="knowledge-tabs" aria-label="Knowledge base sections"><button class="active" data-knowledge-tab="projects">Project database <b>24</b></button><button data-knowledge-tab="people">Team &amp; CVs <b>18</b></button></nav>
+      <form id="knowledgeEditor" class="knowledge-editor" hidden></form>
+      <div id="knowledgeContent"></div>
+    </section>
+
+    <section class="view page-shell" id="detailView" data-page="detail">
+      <button class="back-link" data-jump="opportunities">← Back to opportunities</button>
+      <div id="detailContent"></div>
+    </section>
+  </main>
+
+  <div class="drawer-scrim" id="drawerScrim"></div>
+  <aside class="quick-drawer" id="quickDrawer" aria-hidden="true"><button class="drawer-close" aria-label="Close">×</button><div id="drawerContent"></div></aside>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+  <script src="today-enhancements.js"></script>
+  <script src="pipeline-enhancements.js"></script>
+  <script src="final-enhancements.js"></script>
+  <script src="review-workspace-enhancements.js"></script>
+  <script src="product-polish.js"></script>
+  <script src="final-round.js"></script>
+  <script src="opportunities-dashboard-round.js"></script>
+  <script type="module" src="dashboard-globe.js"></script>
+  <script src="workspace-data.js"></script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3d26af87bb585e7',t:'MTc4OTc1NjE4NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
