@@ -6,34 +6,16 @@
 // blog/news content, not opportunities).
 
 const cheerio = require('cheerio');
-const { execFile } = require('child_process');
-const { promisify } = require('util');
 const { callGemini, hasGeminiKey } = require('../lib/gemini');
 const { buildCoefficientPrompt } = require('../lib/scoring');
-
-const execFileAsync = promisify(execFile);
-
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
-const BROWSER_HEADERS = { 'User-Agent': USER_AGENT, 'Accept': 'text/html,application/xhtml+xml' };
+const { curlFetchText } = require('../lib/curlFetch');
 
 const PRIORITY_PAGE = 'https://coefficientgiving.org/funds/global-health-wellbeing-opportunities/';
 
 // coefficientgiving.org sits behind bot protection that fingerprints the TLS
-// handshake: Node's built-in fetch (undici) gets a 403 with these exact
-// headers, while curl — same headers, same public page — gets a 200.
-// Shell out to curl first; fall back to native fetch if curl isn't on PATH,
-// so this still degrades gracefully on a machine without it.
-async function fetchPage(url) {
-  try {
-    const { stdout } = await execFileAsync('curl', ['-s', '-A', USER_AGENT, url], { maxBuffer: 1024 * 1024 * 20, timeout: 15000 });
-    if (stdout && stdout.length > 200) return stdout;
-    throw new Error('curl returned an empty or too-short response');
-  } catch (curlErr) {
-    const res = await fetch(url, { headers: BROWSER_HEADERS });
-    if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url} (curl also failed: ${curlErr.message})`);
-    return res.text();
-  }
-}
+// handshake: Node's built-in fetch (undici) gets a 403, curl gets a 200 with
+// the identical headers — see lib/curlFetch.js.
+const fetchPage = curlFetchText;
 
 function stripHtml(html) {
   return html

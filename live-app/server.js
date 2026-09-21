@@ -6,9 +6,13 @@ const cors = require('cors');
 const { searchGrantsGov } = require('./connectors/grantsGov');
 const { searchWorldBank } = require('./connectors/worldBank');
 const { searchCoefficientGiving } = require('./connectors/coefficientGiving');
+const { searchUnitaid } = require('./connectors/unitaid');
+const { searchUndp } = require('./connectors/undp');
+const { searchUngm } = require('./connectors/ungm');
 const { evaluateOpportunity } = require('./lib/scoring');
 const { dedupe } = require('./lib/dedupe');
 const { hasGeminiKey } = require('./lib/gemini');
+const { closeBrowser } = require('./lib/browser');
 
 const app = express();
 app.use(cors());
@@ -41,13 +45,16 @@ app.post('/api/search', async (req, res) => {
   const keyword = (req.body?.keyword || 'health systems').trim() || 'health systems';
   const criteria = req.body?.criteria || null;
 
-  const [grantsGov, worldBank, coefficientGiving] = await Promise.all([
+  const [grantsGov, worldBank, coefficientGiving, unitaid, undp, ungm] = await Promise.all([
     safeRun('Grants.gov', () => searchGrantsGov({ keyword })),
     safeRun('World Bank', () => searchWorldBank({ keyword })),
-    safeRun('Coefficient Giving', () => searchCoefficientGiving({}))
+    safeRun('Coefficient Giving', () => searchCoefficientGiving({})),
+    safeRun('Unitaid', () => searchUnitaid()),
+    safeRun('UNDP', () => searchUndp({ keyword })),
+    safeRun('UNGM', () => searchUngm({ keyword }))
   ]);
 
-  const rawOpportunities = [...grantsGov.items, ...worldBank.items, ...coefficientGiving.items];
+  const rawOpportunities = [...grantsGov.items, ...worldBank.items, ...coefficientGiving.items, ...unitaid.items, ...undp.items, ...ungm.items];
   const deduped = dedupe(rawOpportunities);
 
   const evaluated = await Promise.all(deduped.map(async (opp) => {
@@ -104,14 +111,26 @@ app.post('/api/search', async (req, res) => {
     sources: {
       grantsGov: { ok: grantsGov.ok, count: grantsGov.count, ms: grantsGov.ms, error: grantsGov.error || null },
       worldBank: { ok: worldBank.ok, count: worldBank.count, ms: worldBank.ms, error: worldBank.error || null },
-      coefficientGiving: { ok: coefficientGiving.ok, count: coefficientGiving.count, ms: coefficientGiving.ms, error: coefficientGiving.error || null }
+      coefficientGiving: { ok: coefficientGiving.ok, count: coefficientGiving.count, ms: coefficientGiving.ms, error: coefficientGiving.error || null },
+      unitaid: { ok: unitaid.ok, count: unitaid.count, ms: unitaid.ms, error: unitaid.error || null },
+      undp: { ok: undp.ok, count: undp.count, ms: undp.ms, error: undp.error || null },
+      ungm: { ok: ungm.ok, count: ungm.count, ms: ungm.ms, error: ungm.error || null }
     },
     results: evaluated
   });
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Aceso Intelligence live server running at http://localhost:${PORT}`);
   console.log(`Gemini scoring: ${hasGeminiKey() ? 'ENABLED' : 'DISABLED (set GEMINI_API_KEY in live-app/.env to enable)'}`);
 });
+
+// UNGM automation keeps a headless browser open in the background — close
+// it cleanly on shutdown instead of leaving an orphaned process behind.
+function shutdown() {
+  server.close();
+  closeBrowser().finally(() => process.exit(0));
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

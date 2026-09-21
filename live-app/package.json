@@ -1,7 +1,7 @@
 {
   "name": "aceso-intelligence-live",
   "version": "1.0.0",
-  "description": "Aceso Intelligence — live search across Grants.gov, World Bank procurement notices and Coefficient Giving, scored with Gemini.",
+  "description": "Aceso Intelligence — live search across Grants.gov, World Bank, Coefficient Giving, Unitaid, UNDP and UNGM, scored with Gemini.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,7 +11,8 @@
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "puppeteer-core": "^23.0.0"
   },
   "engines": {
     "node": ">=18"
