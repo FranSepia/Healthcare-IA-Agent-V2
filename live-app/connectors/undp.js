@@ -10,8 +10,15 @@ const LIST_URL = 'https://procurement-notices.undp.org/';
 
 function parseDate(text) {
   if (!text) return null;
-  // format like "02-Oct-26"
-  const d = new Date(text.trim().replace(/-(\d{2})$/, '-20$1'));
+  // The page's deadline cell concatenates the date with a time/timezone
+  // note with no space between them (e.g. "29-Sep-2602:59 PM (New York
+  // time)" — that's "29-Sep-26" + "02:59 PM ..." glued together). Pull out
+  // just the "DD-Mon-YY" token (year is always 2 digits here) rather than
+  // trying to parse the whole garbled string — a greedy \d{2,4} would eat
+  // into the following time digits and produce a bogus 4-digit year.
+  const match = text.trim().match(/\d{1,2}-[A-Za-z]{3}-\d{2}/);
+  if (!match) return text.trim();
+  const d = new Date(match[0].replace(/-(\d{2})$/, '-20$1'));
   if (Number.isNaN(d.getTime())) return text.trim();
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }

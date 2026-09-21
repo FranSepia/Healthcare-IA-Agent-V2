@@ -57,7 +57,18 @@ app.post('/api/search', async (req, res) => {
   const rawOpportunities = [...grantsGov.items, ...worldBank.items, ...coefficientGiving.items, ...unitaid.items, ...undp.items, ...ungm.items];
   const deduped = dedupe(rawOpportunities);
 
-  const evaluated = await Promise.all(deduped.map(async (opp) => {
+  // Drop opportunities whose deadline has already passed before they're even
+  // scored — there's no value in reviewing (or excluding) a closed notice,
+  // so these no longer appear anywhere, not even in "Discarded". A due date
+  // that doesn't parse cleanly is kept (never dropped on ambiguous data).
+  const now = Date.now();
+  const open = deduped.filter((opp) => {
+    if (!opp.due) return true;
+    const parsed = Date.parse(opp.due);
+    return Number.isNaN(parsed) || parsed >= now;
+  });
+
+  const evaluated = await Promise.all(open.map(async (opp) => {
     const evaluation = await evaluateOpportunity(opp, criteria);
     return {
       title: opp.title,

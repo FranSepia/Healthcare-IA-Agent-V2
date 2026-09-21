@@ -40,13 +40,8 @@ function runKnockouts(opp, criteria) {
   let disqualified = false;
   let reason = null;
 
-  if (opp.due) {
-    const parsed = Date.parse(opp.due);
-    if (!Number.isNaN(parsed) && parsed < Date.now()) {
-      disqualified = true;
-      reason = 'Opportunity already closed';
-    }
-  }
+  // "Already closed" is filtered out entirely in server.js before this ever
+  // runs — a closed notice isn't worth reviewing, active or excluded.
 
   if (!disqualified && /individual consultant/i.test(opp.raw?.procurementMethod || '')) {
     disqualified = true;
