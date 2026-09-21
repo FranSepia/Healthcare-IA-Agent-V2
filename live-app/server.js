@@ -92,6 +92,11 @@ app.post('/api/search', async (req, res) => {
     };
   }));
 
+  // Rank by fit, not by which connector happened to answer first — otherwise
+  // "Today" (which only shows the top few) can look like it's only pulling
+  // from whichever source returns the most rows (usually Grants.gov).
+  evaluated.sort((a, b) => (b.knockedOut === a.knockedOut ? b.score - a.score : (a.knockedOut ? 1 : -1)));
+
   res.json({
     searchedAt: new Date().toISOString(),
     keyword,
