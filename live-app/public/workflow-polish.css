@@ -51,6 +51,16 @@
 .source-tag.src-grantsgov{background:var(--sky);color:var(--blue2)}
 .source-tag.src-developmentaid{background:var(--orangebg);color:var(--orange)}
 .source-tag.src-coefficient{background:#efe9f9;color:var(--purple2)}
+.source-tag.src-worldbank{background:var(--greenbg);color:var(--green)}
+.criteria-audit>div{grid-template-columns:1fr 60px 92px}
+.criteria-audit span b{font-size:14px}
+.criteria-audit span small{font-size:12.5px;line-height:1.4}
+.criteria-audit em{font-size:13px}
+.criteria-audit strong{font-size:13px}
+.criteria-audit header small{font-size:10.5px}
+.criteria-audit header h3{font-size:21px!important}
+.criteria-audit header button{font-size:12px}
+.criteria-audit>footer{font-size:11.5px}
 .rfp-status.rfp-open{background:var(--greenbg);color:var(--green)}
 .rfp-status.rfp-closed{background:var(--redbg);color:var(--red)}
 .rfp-status.rfp-info{background:var(--sky);color:var(--blue2)}

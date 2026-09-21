@@ -18,7 +18,7 @@ const discarded=[
 let selected=new Set(); let selectedOpp=opportunities[0]; let role='Business Development';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 function fitClass(n){return n>=85?'fit-high':n>=65?'fit-mid':'fit-low'}
-const SOURCE_META={'Grants.gov':{cls:'src-grantsgov'},'DevelopmentAid':{cls:'src-developmentaid'},'Coefficient Giving':{cls:'src-coefficient'}};
+const SOURCE_META={'Grants.gov':{cls:'src-grantsgov'},'DevelopmentAid':{cls:'src-developmentaid'},'Coefficient Giving':{cls:'src-coefficient'},'World Bank':{cls:'src-worldbank'}};
 const RFP_STATUS_META={'Open RFP':{cls:'rfp-open'},'Closed RFP':{cls:'rfp-closed'},'Informational Announcement':{cls:'rfp-info'},'Potential Future Opportunity':{cls:'rfp-potential'}};
 function sourceTag(o){const m=o&&SOURCE_META[o.source];return m?`<span class="tag source-tag ${m.cls}">${o.source}</span>`:'';}
 function rfpStatusTag(o){const m=o&&o.rfpStatus&&RFP_STATUS_META[o.rfpStatus];return m?`<span class="tag rfp-status ${m.cls}">${o.rfpStatus}</span>`:'';}

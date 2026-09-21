@@ -41,6 +41,34 @@
     return [r.title, r.org, r.country, r.knockoutReason || 'Knocked out by a hard criteria rule'];
   }
 
+  // Replaces the "37 automatically excluded" accordion (which otherwise
+  // still shows today-enhancements.js's 6 hardcoded example cases) with the
+  // real knock-outs from this search, so the count badge and the panel
+  // content never disagree again.
+  function renderExcludedContent() {
+    const container = document.querySelector('#excludedContent');
+    if (!container || typeof discarded === 'undefined') return;
+    if (!discarded.length) {
+      container.innerHTML = '<p style="padding:18px 4px;color:var(--muted);font-size:13px">No opportunities were excluded in this search.</p>';
+      return;
+    }
+    container.innerHTML = discarded.map((d, i) => `
+      <article class="excluded-case ${i === 0 ? 'open' : ''}">
+        <button class="excluded-case-head" aria-expanded="${i === 0}">
+          <span class="excluded-case-title"><small>${d[1]} · ${d[2]}</small><b>${d[0]}</b></span>
+          <span class="excluded-case-reason">${d[3]}</span><span class="case-chevron">›</span>
+        </button>
+        <div class="excluded-explanation"><small>WHY THIS IS NOT A MATCH</small><p>${d[3]}</p><div><button class="keep-excluded">Keep excluded</button><button class="recover-case">Recover for human review</button></div></div>
+      </article>`).join('');
+    container.querySelectorAll('.excluded-case-head').forEach(btn => btn.onclick = () => {
+      const card = btn.closest('.excluded-case');
+      card.classList.toggle('open');
+      btn.setAttribute('aria-expanded', card.classList.contains('open'));
+    });
+    container.querySelectorAll('.keep-excluded').forEach(btn => btn.onclick = () => btn.closest('.excluded-case').classList.remove('open'));
+    container.querySelectorAll('.recover-case').forEach(btn => btn.onclick = () => { btn.textContent = 'Sent to human review'; btn.disabled = true; });
+  }
+
   function refreshCountBadges() {
     const activeCount = typeof activeOpportunities === 'function' ? activeOpportunities().length : (typeof opportunities !== 'undefined' ? opportunities.length : 0);
     document.querySelectorAll('.today-nine').forEach(el => { el.textContent = String(activeCount); });
@@ -80,6 +108,7 @@
     if (typeof renderPipeline === 'function') { try { renderPipeline(); } catch (e) { /* pipeline uses its own mock stage data — safe to ignore */ } }
 
     refreshCountBadges();
+    renderExcludedContent();
     document.dispatchEvent(new CustomEvent('aceso:live-search-complete', { detail: data }));
   }
 
