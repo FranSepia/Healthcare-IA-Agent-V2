@@ -38,8 +38,53 @@
   }
 
   function mapResultToDiscarded(r) {
-    return [r.title, r.org, r.country, r.knockoutReason || 'Knocked out by a hard criteria rule'];
+    return [r.title, r.org, r.country, r.knockoutReason || 'Knocked out by a hard criteria rule', r.source];
   }
+
+  function sourceBadge(source) {
+    if (!source) return '';
+    if (typeof SOURCE_META !== 'undefined' && SOURCE_META[source]) {
+      return `<span class="tag source-tag ${SOURCE_META[source].cls}">${source}</span> `;
+    }
+    return `<span class="tag">${source}</span> `;
+  }
+
+  // Picks the Today digest so it always represents the sources that actually
+  // returned results this search (best item per source first, then backfills
+  // by score) — a pure global top-5-by-score list can end up all-Grants.gov
+  // when that source's scores happen to cluster at the top.
+  function diverseTopPicks(list, n) {
+    const usedSources = new Set();
+    const picked = [];
+    for (const o of list) {
+      if (picked.length >= n) break;
+      if (!usedSources.has(o.source)) { picked.push(o); usedSources.add(o.source); }
+    }
+    for (const o of list) {
+      if (picked.length >= n) break;
+      if (!picked.includes(o)) picked.push(o);
+    }
+    return picked;
+  }
+
+  function renderTodayDiverse() {
+    const list = document.querySelector('#todayList');
+    if (!list || typeof activeOpportunities !== 'function' || typeof oppRow !== 'function' || typeof bindOppRows !== 'function') return;
+    const picks = diverseTopPicks(activeOpportunities(), 5);
+    list.innerHTML = picks.map(o => oppRow(o)).join('');
+    bindOppRows(list);
+    const zone = document.querySelector('.today-zone');
+    if (zone) {
+      let panel = document.getElementById('todayWatchlist');
+      if (!panel && typeof watchlistHTML === 'function' && watchlistHTML()) {
+        zone.insertAdjacentHTML('beforeend', `<div id="todayWatchlist">${watchlistHTML()}</div>`);
+      } else if (panel && typeof watchlistHTML === 'function') {
+        panel.innerHTML = watchlistHTML();
+      }
+      if (typeof bindWatchlist === 'function') bindWatchlist(zone);
+    }
+  }
+  window.renderToday = renderTodayDiverse;
 
   // Replaces the "37 automatically excluded" accordion (which otherwise
   // still shows today-enhancements.js's 6 hardcoded example cases) with the
@@ -55,7 +100,7 @@
     container.innerHTML = discarded.map((d, i) => `
       <article class="excluded-case ${i === 0 ? 'open' : ''}">
         <button class="excluded-case-head no-flag" aria-expanded="${i === 0}">
-          <span class="excluded-case-title"><small>${d[1]} · ${d[2]}</small><b>${d[0]}</b></span>
+          <span class="excluded-case-title"><small>${sourceBadge(d[4])}${d[1]} · ${d[2]}</small><b>${d[0]}</b></span>
           <span class="excluded-case-reason">${d[3]}</span><span class="case-chevron">›</span>
         </button>
         <div class="excluded-explanation"><small>WHY THIS IS NOT A MATCH</small><p>${d[3]}</p><div><button class="keep-excluded">Keep excluded</button><button class="recover-case">Recover for human review</button></div></div>

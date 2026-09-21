@@ -4,6 +4,46 @@ import world from 'https://esm.sh/@d3-maps/atlas@1.0.0/world/countries/countries
 
 const countries = feature(world, world.objects.features).features;
 
+// One shared set of gradient/blur defs, injected once into the document so
+// every globe instance (Today hero + Dashboard widget) can reference the
+// same glow via url(#id) — SVG fragment refs resolve document-wide, so this
+// doesn't need to live inside each mounted <svg>.
+function injectGlobeDefs() {
+  if (document.getElementById('globe-defs-root')) return;
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const holder = document.createElementNS(svgNS, 'svg');
+  holder.setAttribute('id', 'globe-defs-root');
+  holder.setAttribute('aria-hidden', 'true');
+  holder.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+  holder.innerHTML = `<defs>
+    <radialGradient id="globeGlow-high" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff3d0" stop-opacity=".95"/>
+      <stop offset="42%" stop-color="#ffd34f" stop-opacity=".4"/>
+      <stop offset="100%" stop-color="#ffd34f" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="globeGlow-mid" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#d9f2ff" stop-opacity=".9"/>
+      <stop offset="42%" stop-color="#5ec6ff" stop-opacity=".36"/>
+      <stop offset="100%" stop-color="#5ec6ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="globeGlow-low" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#dbe6f0" stop-opacity=".75"/>
+      <stop offset="42%" stop-color="#5c7c9e" stop-opacity=".3"/>
+      <stop offset="100%" stop-color="#5c7c9e" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="globePointShine" x="-90%" y="-90%" width="280%" height="280%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>`;
+  document.body.appendChild(holder);
+}
+injectGlobeDefs();
+
+function tier(d) { return d.bestScore >= 85 ? 'high' : d.bestScore >= 65 ? 'mid' : 'low'; }
+function tierClass(d) { const t = tier(d); return t === 'high' ? '' : ` ${t}`; }
+function tierColor(d) { const t = tier(d); return t === 'high' ? '#ffd34f' : t === 'mid' ? '#5ec6ff' : '#5c7c9e'; }
+
 // Small alias table for the country-name spellings our live connectors
 // actually return (Grants.gov/World Bank/UNDP/UNGM text) that don't match
 // the atlas's own labels verbatim. Matching itself is substring-based
@@ -128,11 +168,36 @@ window.refreshGlobeActivity = refreshActivity;
 
 const initialized = new WeakSet();
 
+// Angle-aware lerp so a jump from, say, 170° to -170° travels the short way
+// (10°) across the antimeridian instead of spinning the long way around.
+function angleLerp(a, b) {
+  const diff = ((b - a + 540) % 360) - 180;
+  return t => a + diff * t;
+}
+
+const TRAVEL_MS = 2600;   // how long one slow jump between points takes
+const DWELL_MS = 3400;    // how long the globe rests on a point before jumping again
+const RESUME_DELAY = 2200; // grace period after a manual drag before auto-jumping resumes
+
 function mount(container) {
   if (!container || initialized.has(container)) return;
   initialized.add(container);
   const svg = d3.select(container.querySelector('svg'));
   let rotation = [-18, -8, 0], dragging = false, lastInteraction = Date.now(), selected = null;
+  let travel = null, focusIdx = -1, nextActionAt = Date.now() + 1200;
+
+  function clampLat(l) { return Math.max(-70, Math.min(70, l)); }
+
+  function updateSelectionCard(d) {
+    const card = container.closest('.dashboard-world, .radar-card, .dashboard-map')?.querySelector('[data-globe-selection], .globe-selection');
+    if (card) { card.querySelector('b').textContent = d.name; card.querySelector('span').textContent = d.detail; }
+  }
+
+  function beginTravelTo(d) {
+    travel = { fromLon: rotation[0], fromLat: rotation[1], toLon: -d.lon, toLat: clampLat(-d.lat), start: Date.now() };
+    selected = d.name;
+    updateSelectionCard(d);
+  }
 
   function draw() {
     if (!container.isConnected) return;
@@ -140,10 +205,12 @@ function mount(container) {
     // Wide hero cards (image was a "curved horizon" crop) get a bigger,
     // more zoomed-in globe that fills the rectangle via slice-cropping;
     // the small circular dashboard widget keeps the classic "whole globe
-    // fits inside" framing.
+    // fits inside" framing. Both are scaled down from before so there's
+    // visible frame around the sphere and points read as bigger/brighter
+    // relative to the globe's surface.
     const wide = w > h * 1.25;
     const size = Math.max(w, h);
-    const scale = wide ? size * 0.62 : Math.min(w, h) * 0.455;
+    const scale = wide ? size * 0.48 : Math.min(w, h) * 0.36;
     const projection = d3.geoOrthographic().translate([w / 2, h / 2]).scale(scale).rotate(rotation).clipAngle(90).precision(.5);
     const path = d3.geoPath(projection);
     svg.attr('viewBox', `0 0 ${w} ${h}`).attr('preserveAspectRatio', 'xMidYMid slice').selectAll('*').remove();
@@ -154,13 +221,17 @@ function mount(container) {
 
     const visible = activity.filter(d => d3.geoDistance([-rotation[0], -rotation[1]], [d.lon, d.lat]) < Math.PI / 2);
     const points = svg.append('g').selectAll('g').data(visible, d => d.name).join('g').attr('transform', d => `translate(${projection([d.lon, d.lat])})`);
-    points.append('circle').attr('class', d => `globe-halo${d.bestScore >= 85 ? '' : d.bestScore >= 65 ? ' mid' : ' low'}`).attr('r', d => 8 + Math.min(10, d.count * 1.5));
+    points.append('circle').attr('class', d => `globe-halo${tierClass(d)}`).style('fill', d => `url(#globeGlow-${tier(d)})`).attr('r', d => 12 + Math.min(16, d.count * 2));
+    const ping = points.append('circle').attr('class', 'globe-ping').attr('r', d => 5 + Math.min(6, d.count)).style('fill', 'none').style('stroke', tierColor).style('stroke-width', 1.4).style('opacity', .6);
+    ping.append('animate').attr('attributeName', 'r').attr('values', d => { const r = 5 + Math.min(6, d.count); return `${r};${r + 11}`; }).attr('dur', '2.4s').attr('repeatCount', 'indefinite');
+    ping.append('animate').attr('attributeName', 'opacity').attr('values', '.6;0').attr('dur', '2.4s').attr('repeatCount', 'indefinite');
     points.append('circle')
-      .attr('class', d => `globe-point${d.bestScore >= 85 ? '' : d.bestScore >= 65 ? ' mid' : ' low'}${d.name === selected ? ' selected' : ''}`)
-      .attr('r', d => 4 + Math.min(5, d.count))
+      .attr('class', d => `globe-point${tierClass(d)}${d.name === selected ? ' selected' : ''}`)
+      .attr('r', d => 5 + Math.min(6, d.count))
+      .style('stroke', '#fff').style('stroke-width', d => d.name === selected ? 2.2 : 1.4)
       .attr('role', 'button').attr('tabindex', 0)
       .attr('aria-label', d => `${d.name}: ${d.detail}`)
-      .on('click', (event, d) => select(d));
+      .on('click', (event, d) => { lastInteraction = Date.now(); focusIdx = activity.findIndex(a => a.name === d.name); beginTravelTo(d); });
 
     if (!activityReady) {
       svg.append('text').attr('class', 'globe-loading-label').attr('x', w / 2).attr('y', h - 14).attr('text-anchor', 'middle').text('Running the first live search…');
@@ -169,18 +240,43 @@ function mount(container) {
     }
   }
 
-  function select(d) {
-    selected = d.name; lastInteraction = Date.now();
-    const card = container.closest('.dashboard-world, .radar-card, .dashboard-map')?.querySelector('[data-globe-selection], .globe-selection');
-    if (card) { card.querySelector('b').textContent = d.name; card.querySelector('span').textContent = d.detail; }
-    draw();
-  }
-
   container._globeRedraw = draw;
 
   svg.call(d3.drag().on('start', () => { dragging = true; lastInteraction = Date.now(); }).on('drag', event => { rotation[0] += event.dx * .38; rotation[1] = Math.max(-75, Math.min(75, rotation[1] - event.dy * .38)); draw(); }).on('end', () => { dragging = false; lastInteraction = Date.now(); }));
   new ResizeObserver(draw).observe(container);
-  d3.timer(() => { if (!container.isConnected) return true; if (!dragging && Date.now() - lastInteraction > 1800) { rotation[0] += .035; draw(); } return false; });
+
+  // Instead of spinning continuously, the globe rests on the current point,
+  // then slowly eases its way to the next-most-relevant one (highest fit
+  // first, cycling through), pausing between each jump. Dragging suspends
+  // this for a couple of seconds so it never fights the user.
+  d3.timer(() => {
+    if (!container.isConnected) return true;
+    if (dragging) return false;
+    const now = Date.now();
+
+    if (travel) {
+      const t = Math.min(1, (now - travel.start) / TRAVEL_MS);
+      const eased = d3.easeCubicInOut(t);
+      rotation[0] = angleLerp(travel.fromLon, travel.toLon)(eased);
+      rotation[1] = travel.fromLat + (travel.toLat - travel.fromLat) * eased;
+      draw();
+      if (t >= 1) { travel = null; nextActionAt = now + DWELL_MS; }
+      return false;
+    }
+
+    if (now - lastInteraction < RESUME_DELAY || now < nextActionAt) return false;
+
+    if (activity.length) {
+      focusIdx = (focusIdx + 1) % activity.length;
+      beginTravelTo(activity[focusIdx]);
+    } else {
+      // No data yet — gentle fallback spin instead of sitting still.
+      rotation[0] += .035;
+      draw();
+      nextActionAt = now;
+    }
+    return false;
+  });
   draw();
 }
 

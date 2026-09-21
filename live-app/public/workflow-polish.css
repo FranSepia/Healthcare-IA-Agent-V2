@@ -56,10 +56,13 @@
 .source-tag.src-undp{background:#eef1fb;color:#3730a3}
 .source-tag.src-ungm{background:#fff7e0;color:#92720a}
 .opp-row[hidden],.unified-opp-row[hidden],.pipeline-data-row[hidden]{display:none!important}
+.excluded-case-title small .tag{vertical-align:middle;margin-right:6px}
 .globe-point.mid{fill:#5ec6ff}
 .globe-point.low{fill:#5c7c9e}
 .globe-halo.mid{fill:rgba(94,198,255,.2)}
 .globe-halo.low{fill:rgba(92,124,158,.2)}
+.globe-point{filter:url(#globePointShine)}
+.globe-ping{pointer-events:none}
 .globe-loading-label{fill:rgba(255,255,255,.72);font-size:12px;font-family:var(--sans)}
 .radar-card .world-orbit.hero-globe,.dashboard-map .world-orbit{position:absolute;inset:0;width:100%;height:100%;margin:0;border-radius:0;border:0;box-shadow:none;cursor:grab}
 .radar-card .world-orbit.hero-globe svg,.dashboard-map .world-orbit svg{width:100%;height:100%;display:block}
