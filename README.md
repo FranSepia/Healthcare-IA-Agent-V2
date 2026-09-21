@@ -18,6 +18,8 @@ No backend, no build step — each folder is a self-contained static site (open 
   - A "Future opportunities watchlist" separating non-Open-RFP Coefficient Giving items from the active review queue.
   - A three-day ROI validation dashboard section (agent-only / manual-only / found-by-both, false positives/negatives, review time, results by source/region/thematic area).
 
+- **`live-app/`** *(branch `feature/live-integration` only)* — The real, working version: a small Node/Express backend that actually calls Grants.gov and the World Bank (both free, public, no key), scrapes Coefficient Giving, deduplicates and scores everything with Gemini (or a fallback scorer if no key is set), and serves the same frontend wired to real data. Clicking **Search now** runs a real search. See `live-app/README.md` for setup and exactly where to put your Gemini API key.
+
 ## Security note
 
-These are frontend-only prototypes with mock data. No real credential, API key or DevelopmentAid login is stored anywhere in this repository — production connections to Grants.gov, DevelopmentAid or any other source must keep keys in backend environment variables, never in client-side code.
+These are frontend-only prototypes with mock data — except `live-app/`, which is a real backend. Even there, no real credential or API key is ever stored in this repository or sent to the browser: `live-app/.env` (holding `GEMINI_API_KEY`) is git-ignored, and the key is only ever read server-side.
