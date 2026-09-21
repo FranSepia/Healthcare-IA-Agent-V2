@@ -46,7 +46,8 @@ async function searchWorldBank({ keyword = 'health', rows = 12 } = {}) {
           sourceOpportunityId: n.bid_reference_no || n.id,
           language: n.notice_lang_name || 'English',
           projectId: n.project_id,
-          projectName: n.project_name
+          projectName: n.project_name,
+          procurementMethod: n.procurement_method_name || null
         }
       };
     });

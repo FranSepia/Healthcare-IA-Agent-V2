@@ -18,12 +18,25 @@ function fitTierFor(score, disqualified) {
   return 'Low Fit';
 }
 
+// Patterns for notices that are goods/works procurement, not advisory
+// services — Aceso's "Excessive focus on physical infrastructure" /
+// goods-procurement knock-out. Checked against title + description.
+const GOODS_OR_WORKS_PATTERN = /\b(procurement of|supply of|delivery of|purchase of)\b.{0,40}\b(goods|equipment|vehicles?|ambulances?|dental chairs?|medical equipment|furniture|generators?|drugs|medicines|pharmaceuticals)\b|\bcivil works\b|\bconstruction (of|supervision)\b|plant design,?\s*supply,?\s*(and\s*)?installation|\bwarehousing\b|\brehabilitation of\b.{0,30}\b(building|infrastructure|facility|plant)\b/i;
+
+const CONFLICT_AREA_COUNTRIES = ['Syria', 'Yemen', 'Afghanistan', 'Somalia', 'South Sudan', 'Ukraine', 'Sudan', 'Libya'];
+
 // Pure-code hard knock-outs, applied before any LLM call — mirrors the
-// "quick knock-outs first" design from the Aceso backend spec.
+// "quick knock-outs first" design from the Aceso backend spec. Only rules
+// that can be checked reliably from structured fields or clear text
+// patterns run here; anything requiring judgment (vague scope, indirect
+// eligibility red flags) is left to the Gemini/heuristic evaluation step
+// as a review flag instead, per "ante la duda, incluir."
 function runKnockouts(opp, criteria) {
   const flags = [];
   const min = criteria?.budget?.min ?? DEFAULT_CRITERIA.budget.min;
   const amount = parseBudgetNumber(opp.value);
+  const titleLower = (opp.title || '').toLowerCase();
+  const combinedText = `${opp.title || ''} ${opp.raw?.description || ''}`;
   let disqualified = false;
   let reason = null;
 
@@ -34,15 +47,31 @@ function runKnockouts(opp, criteria) {
       reason = 'Opportunity already closed';
     }
   }
+
+  if (!disqualified && /individual consultant/i.test(opp.raw?.procurementMethod || '')) {
+    disqualified = true;
+    reason = 'Restricted to individual consultants, not firms';
+  }
+  if (!disqualified && /individual consultant/.test(titleLower)) {
+    disqualified = true;
+    reason = 'Restricted to individual consultants, not firms';
+  }
+
+  if (!disqualified && GOODS_OR_WORKS_PATTERN.test(combinedText)) {
+    disqualified = true;
+    reason = 'Excessive focus on physical infrastructure (goods/civil-works procurement, not advisory services)';
+  }
+
+  if (!disqualified && CONFLICT_AREA_COUNTRIES.some(c => (opp.country || '').includes(c))) {
+    disqualified = true;
+    reason = 'Work located in a conflict area';
+  }
+
   if (!disqualified && amount != null && amount < min) {
     flags.push('Clearly insufficient budget');
   }
   if (!opp.value || opp.value === 'Not disclosed') {
     flags.push('Budget not published');
-  }
-  const titleLower = (opp.title || '').toLowerCase();
-  if (/individual consultant/.test(titleLower)) {
-    flags.push('Restricted to individual consultants, not firms');
   }
 
   return { disqualified, reason, flags };
@@ -91,16 +120,31 @@ Deadline: ${opp.due}
 Source: ${opp.source}
 Description / notice text (may be partial): ${(opp.raw?.description || '').slice(0, 3000)}
 
+First check the Aceso quick knock-outs below. If ANY clearly apply, set
+"disqualified": true and stop scoring meaningfully (score should be low).
+Only disqualify on a clear match — if it's ambiguous, do NOT disqualify;
+leave it for human review instead (score normally, add a review flag).
+
+QUICK KNOCK-OUTS (any one, if clearly true, disqualifies):
+Restricted to individual consultants, not firms; full-time in-country
+presence required; local incorporation required; eligibility restricted to
+a country/region that excludes Aceso; work located in a conflict area;
+this is procurement of goods, equipment or civil works/construction, not
+an advisory/consulting assignment; scope of work too vague to evaluate;
+opportunity already closed (deadline passed).
+
 Return this exact JSON shape:
 {
-  "score": <integer 0-100, thematic+activity+regional+funder+budget+eligibility fit>,
+  "score": <integer 0-100, thematic+activity+regional+funder+budget+eligibility fit — irrelevant if disqualified is true>,
+  "disqualified": <true or false>,
+  "disqualifiedReason": "<the specific knock-out that applied, or null>",
   "pillar": "<the single best-matching focus area from the list above>",
   "objective": "<1-2 sentence plain-English summary of what the opportunity actually asks for>",
   "eligibility": "<1 sentence: who can apply, any red flags (national-firm-only, in-country incorporation, etc.)>",
   "qualifications": "<1 sentence: required qualifications/experience if stated, else 'Not specified'>",
   "keywords": ["<3-5 short keyword phrases>"],
   "reviewFlags": ["<zero or more from: Tight submission deadline, Missing or incomplete TOR/RFP, Budget not published, Unfamiliar or inconsistent funder, Unclear eligibility, Limited information available>"],
-  "explanation": "<2-3 sentences explaining the score, written for a human analyst deciding whether to review this further>"
+  "explanation": "<2-3 sentences explaining the score or the disqualification, written for a human analyst>"
 }`;
 }
 
@@ -148,6 +192,22 @@ async function evaluateOpportunity(opp, criteria) {
   if (hasGeminiKey()) {
     try {
       const raw = await callGemini(buildPrompt(opp, criteria));
+      if (raw.disqualified) {
+        return {
+          score: 15,
+          fitTier: 'Low Fit',
+          pillar: raw.pillar || 'Not evaluated',
+          objective: raw.objective || '',
+          eligibility: raw.eligibility || 'Not evaluated — knocked out before scoring',
+          qualifications: 'Not evaluated',
+          keywords: [],
+          reviewFlags: [],
+          explanation: raw.explanation || `Excluded: ${raw.disqualifiedReason || 'matched a hard knock-out rule'}.`,
+          knockedOut: true,
+          knockoutReason: raw.disqualifiedReason || 'Matched a hard knock-out rule',
+          usedGemini: true
+        };
+      }
       evaluation = {
         score: Math.max(0, Math.min(100, Number(raw.score) || 0)),
         pillar: raw.pillar || 'Health systems',

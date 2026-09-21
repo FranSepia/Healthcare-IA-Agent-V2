@@ -54,7 +54,7 @@
     }
     container.innerHTML = discarded.map((d, i) => `
       <article class="excluded-case ${i === 0 ? 'open' : ''}">
-        <button class="excluded-case-head" aria-expanded="${i === 0}">
+        <button class="excluded-case-head no-flag" aria-expanded="${i === 0}">
           <span class="excluded-case-title"><small>${d[1]} · ${d[2]}</small><b>${d[0]}</b></span>
           <span class="excluded-case-reason">${d[3]}</span><span class="case-chevron">›</span>
         </button>
