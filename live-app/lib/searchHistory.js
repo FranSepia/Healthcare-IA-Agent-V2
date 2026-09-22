@@ -36,6 +36,18 @@ async function listSearches(limit = 20) {
   });
 }
 
+// The single most recent complete search, full results included — used to
+// paint the UI instantly on page load instead of showing an empty state
+// for however long the fresh search takes.
+async function getLatestSearch() {
+  if (!hasFirebaseConfig()) return null;
+  const db = getDb();
+  const snap = await db.collection(COLLECTION).orderBy('searchedAt', 'desc').limit(1).get();
+  if (snap.empty) return null;
+  const doc = snap.docs[0];
+  return { id: doc.id, ...doc.data() };
+}
+
 async function getSearchById(id) {
   if (!hasFirebaseConfig()) return null;
   const db = getDb();
@@ -44,4 +56,4 @@ async function getSearchById(id) {
   return { id: doc.id, ...doc.data() };
 }
 
-module.exports = { saveSearch, listSearches, getSearchById };
+module.exports = { saveSearch, listSearches, getSearchById, getLatestSearch };

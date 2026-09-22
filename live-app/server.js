@@ -14,7 +14,7 @@ const { dedupe } = require('./lib/dedupe');
 const { hasGeminiKey } = require('./lib/gemini');
 const { closeBrowser } = require('./lib/browser');
 const { hasFirebaseConfig } = require('./lib/firebase');
-const { saveSearch, listSearches, getSearchById } = require('./lib/searchHistory');
+const { saveSearch, listSearches, getSearchById, getLatestSearch } = require('./lib/searchHistory');
 
 const app = express();
 app.use(cors());
@@ -144,6 +144,16 @@ app.get('/api/search-history', async (req, res) => {
     res.json({ enabled: true, searches });
   } catch (err) {
     res.status(500).json({ enabled: true, error: err.message, searches: [] });
+  }
+});
+
+app.get('/api/search-history/latest', async (req, res) => {
+  if (!hasFirebaseConfig()) return res.json({ enabled: false, search: null });
+  try {
+    const search = await getLatestSearch();
+    res.json({ enabled: true, search });
+  } catch (err) {
+    res.status(500).json({ enabled: true, error: err.message, search: null });
   }
 });
 

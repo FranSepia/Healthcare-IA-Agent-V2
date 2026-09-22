@@ -225,6 +225,25 @@
     }
   }
 
+  // Paints the last saved search instantly on load instead of an empty
+  // page — no fresh search runs automatically; the user starts one with
+  // the "Search now" button.
+  async function loadLatestSavedSearch() {
+    try {
+      const res = await fetch('/api/search-history/latest');
+      if (!res.ok) return;
+      const { enabled, search } = await res.json();
+      if (!enabled || !search) return;
+      applyResults(search);
+      if (typeof toast === 'function') {
+        const ago = search.searchedAt ? new Date(search.searchedAt).toLocaleString() : 'a previous search';
+        toast(`Showing the last saved search (${ago}). Click "Search now" to run a fresh one.`);
+      }
+    } catch (err) {
+      console.error('[live-search] could not load the last saved search:', err);
+    }
+  }
+
   function init() {
     const button = document.querySelector('#searchNow');
     if (button) {
@@ -236,8 +255,10 @@
     // visible for the whole (potentially multi-minute) first search.
     refreshCountBadges();
     refreshHeroCopy();
-    // Open the app with real data instead of the static mock set.
-    runLiveSearch('');
+    // Only paint the last saved search — never trigger a fresh (multi-minute,
+    // Gemini-backed) search automatically. A new search only ever starts
+    // when the user clicks "Search now".
+    loadLatestSavedSearch();
   }
 
   if (document.readyState === 'loading') {
