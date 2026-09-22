@@ -13,6 +13,8 @@ const { evaluateOpportunity } = require('./lib/scoring');
 const { dedupe } = require('./lib/dedupe');
 const { hasGeminiKey } = require('./lib/gemini');
 const { closeBrowser } = require('./lib/browser');
+const { hasFirebaseConfig } = require('./lib/firebase');
+const { saveSearch, listSearches, getSearchById } = require('./lib/searchHistory');
 
 const app = express();
 app.use(cors());
@@ -115,7 +117,7 @@ app.post('/api/search', async (req, res) => {
   // from whichever source returns the most rows (usually Grants.gov).
   evaluated.sort((a, b) => (b.knockedOut === a.knockedOut ? b.score - a.score : (a.knockedOut ? 1 : -1)));
 
-  res.json({
+  const responsePayload = {
     searchedAt: new Date().toISOString(),
     keyword,
     geminiConfigured: hasGeminiKey(),
@@ -128,7 +130,32 @@ app.post('/api/search', async (req, res) => {
       ungm: { ok: ungm.ok, count: ungm.count, ms: ungm.ms, error: ungm.error || null }
     },
     results: evaluated
-  });
+  };
+
+  const historyId = await saveSearch(responsePayload);
+  res.json({ ...responsePayload, historyId });
+});
+
+app.get('/api/search-history', async (req, res) => {
+  if (!hasFirebaseConfig()) return res.json({ enabled: false, searches: [] });
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const searches = await listSearches(limit);
+    res.json({ enabled: true, searches });
+  } catch (err) {
+    res.status(500).json({ enabled: true, error: err.message, searches: [] });
+  }
+});
+
+app.get('/api/search-history/:id', async (req, res) => {
+  if (!hasFirebaseConfig()) return res.status(404).json({ error: 'Search history is not enabled.' });
+  try {
+    const record = await getSearchById(req.params.id);
+    if (!record) return res.status(404).json({ error: 'Search not found.' });
+    res.json(record);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 const PORT = process.env.PORT || 4000;
@@ -136,6 +163,13 @@ const server = app.listen(PORT, () => {
   console.log(`Aceso Intelligence live server running at http://localhost:${PORT}`);
   console.log(`Gemini scoring: ${hasGeminiKey() ? 'ENABLED' : 'DISABLED (set GEMINI_API_KEY in live-app/.env to enable)'}`);
 });
+// With Gemini enabled, every opportunity that passes the non-AI filter gets
+// a real (rate-limited) Gemini call, so a full /api/search can legitimately
+// take several minutes on the free tier's 5-requests/minute quota — well
+// past Node's default request/header timeouts. Disable them for this app.
+server.requestTimeout = 0;
+server.headersTimeout = 0;
+server.timeout = 0;
 
 // UNGM automation keeps a headless browser open in the background — close
 // it cleanly on shutdown instead of leaving an orphaned process behind.

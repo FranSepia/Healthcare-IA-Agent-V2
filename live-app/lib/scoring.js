@@ -186,7 +186,9 @@ async function evaluateOpportunity(opp, criteria) {
   let usedGemini = false;
   if (hasGeminiKey()) {
     try {
+      const geminiStart = Date.now();
       const raw = await callGemini(buildPrompt(opp, criteria));
+      console.log(`[scoring] Gemini call for "${opp.title.slice(0, 60)}" took ${Date.now() - geminiStart}ms`);
       if (raw.disqualified) {
         return {
           score: 15,

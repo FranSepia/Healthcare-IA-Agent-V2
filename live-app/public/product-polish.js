@@ -27,8 +27,6 @@
   const baseOpenDetail=window.openDetail;
   window.openDetail=function(o){
     baseOpenDetail(o);
-    const description=q('.record-origin p');
-    if(description) description.textContent=(o.meta&&o.meta.objective)||summaryById[o.id]||summaryById[1];
   };
 
   const guideSteps=[

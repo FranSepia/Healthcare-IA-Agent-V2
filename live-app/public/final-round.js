@@ -104,7 +104,9 @@
     const view=q('#criteriaView'),s=criteria[criterion]; if(!view)return;
     const editable=['chips','chip-groups','budget','languages','checklist','mnch'].includes(s.type);
     const total=criteria.length;
-    view.innerHTML=`<header class="notebook-head"><div><p class="eyebrow">SEARCH & DECISION CRITERIA</p><h1>How the opportunity agent works</h1><p>A guided notebook for configuring the agent and understanding exactly where human judgment begins.${editable?' Every list on this page is editable — changes are saved for the next search.':''}</p></div><aside><b>LIVE PILOT</b><strong>9</strong><span>ready for review</span><small>37 excluded with traceable reasons</small></aside></header>
+    const readyCount=typeof activeOpportunities==='function'?activeOpportunities().length:0;
+    const excludedCount=(typeof discarded!=='undefined'?discarded:[]).length;
+    view.innerHTML=`<header class="notebook-head"><div><p class="eyebrow">SEARCH & DECISION CRITERIA</p><h1>How the opportunity agent works</h1><p>A guided notebook for configuring the agent and understanding exactly where human judgment begins.${editable?' Every list on this page is editable — changes are saved for the next search.':''}</p></div><aside><b>LIVE PILOT</b><strong>${readyCount}</strong><span>ready for review</span><small>${excludedCount} excluded with traceable reasons</small></aside></header>
       <section class="criteria-notebook"><i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i><i class="ring r4"></i>
         <article class="notebook-page settings-page"><p class="page-count">CRITERION ${String(criterion+1).padStart(2,'0')} <span>/ ${String(total).padStart(2,'0')}</span></p><h2>${s.title}</h2><p>${s.purpose}</p><div class="settings-heading"><h3>${s.settingsLabel||'Current pilot settings'}</h3>${editable?'<button type="button" id="resetCriterion" class="reset-link">↺ Reset to Aceso defaults</button>':''}</div><div class="notebook-settings-editable">${settingsHTML(s)}</div><div class="rule-note"><small>DECISION RULE</small><b>${s.rule}</b></div>${s.legend?`<div class="rfp-legend"><small>RFP CLASSIFICATION</small>${s.legend.map(x=>`<div><span class="tag rfp-status ${x[0]}">${x[1]}</span><p>${x[2]}</p></div>`).join('')}</div>`:''}</article>
         <article class="notebook-page playbook-page"><div class="owner-tabs"><button data-owner="agent" class="${owner==='agent'?'active':''}">Agent</button><button data-owner="human" class="${owner==='human'?'active':''}">Human</button></div><p class="eyebrow">${owner==='agent'?'WHAT THE AGENT DOES':'WHAT THE REVIEWER DECIDES'}</p><h2>${owner==='agent'?'Automated screening playbook':'Required human checkpoints'}</h2><div class="notebook-actions">${s[owner].map((x,i)=>`<div><i>${i+1}</i><span><b>${x[0]}</b><p>${x[1]}</p></span></div>`).join('')}</div><aside class="worked-example"><small>WORKED EXAMPLE</small><p>${s.example}</p><b>${owner==='agent'?'Agent output: documented recommendation':'Human output: recorded decision'}</b></aside></article>
@@ -131,11 +133,6 @@
     const old=q('#sendReview');if(old&&!old.dataset.fixed){const fresh=old.cloneNode(true);fresh.dataset.fixed='1';old.replaceWith(fresh);fresh.onclick=()=>{const count=qa('#todayList input[type="checkbox"]:checked').length;if(!count)return;say(`${count} opportunities sent to human review.`);qa('#todayList input[type="checkbox"]:checked').forEach(x=>x.checked=false);update()}}
   }
 
-  function tuneDashboard(){
-    const funnel=q('.master-funnel');if(funnel)funnel.innerHTML=[['Identified','214','100%',100],['Relevant','68','31.8%',72],['Pursued','31','14.5%',52],['Submitted','25','11.7%',43],['Awarded','7','3.3%',25]].map(x=>`<div style="--w:${x[3]}%"><span>${x[0]}</span><i><u></u></i><b>${x[1]}</b><em>${x[2]}</em></div>`).join('');
-    const card=q('.deadline-card');if(card)card.innerHTML=`<header><div><b>SUBMISSION DEADLINES</b><small>Upcoming proposals by month</small></div><small>Sep 2025 – Feb 2026</small></header><div class="deadline-bars">${[['Sep',4],['Oct',7],['Nov',11],['Dec',6],['Jan',8],['Feb',5]].map(([m,n])=>`<div><b>${n}</b><i style="--h:${n/11*100}%"></i><span>${m}</span></div>`).join('')}</div><p class="deadline-insight"><b>November is the peak month.</b> Plan reviewer capacity before the October pipeline closes.</p>`;
-  }
-
   function pipelineMode(){const active=q('#pipelineMetrics button.active'),view=q('#pipelineView');view?.classList.toggle('proposal-mode',active?.dataset.pstage==='Proposal')}
 
   const priorDetail=window.openDetail;
@@ -146,8 +143,8 @@
   };
 
   const priorShow=window.showView;
-  window.showView=function(name){priorShow(name);if(name==='criteria')renderNotebook();if(name==='dashboard')tuneDashboard();if(name==='pipeline')setTimeout(pipelineMode)};
+  window.showView=function(name){priorShow(name);if(name==='criteria')renderNotebook();if(name==='pipeline')setTimeout(pipelineMode)};
   qa('.navlinks button').forEach(b=>b.onclick=()=>window.showView(b.dataset.view));
   q('#pipelineMetrics')?.addEventListener('click',()=>setTimeout(pipelineMode));
-  tuneToday();tuneDashboard();pipelineMode();renderNotebook();
+  tuneToday();pipelineMode();renderNotebook();
 })();

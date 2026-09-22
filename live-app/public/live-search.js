@@ -114,6 +114,35 @@
     container.querySelectorAll('.recover-case').forEach(btn => btn.onclick = () => { btn.textContent = 'Sent to human review'; btn.disabled = true; });
   }
 
+  function parsePublishedValue(list) {
+    return list.reduce((sum, o) => {
+      const match = /\$([0-9.]+)\s?(million|M|thousand|K)\b/i.exec(o.value || '');
+      if (!match) return sum;
+      const unit = match[2].toLowerCase();
+      const mult = unit === 'million' || unit === 'm' ? 1e6 : unit === 'thousand' || unit === 'k' ? 1e3 : 1;
+      return sum + Number(match[1]) * mult;
+    }, 0);
+  }
+
+  function fmtCurrency(n) {
+    if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+    if (n >= 1e3) return `$${Math.round(n / 1e3)}K`;
+    return `$${n}`;
+  }
+
+  function refreshHeroCopy() {
+    if (typeof opportunities === 'undefined' || typeof discarded === 'undefined') return;
+    const countryCount = new Set(opportunities.map(o => o.country)).size;
+    const screenedCopy = document.querySelector('#heroScreenedCopy');
+    if (screenedCopy) screenedCopy.textContent = `The agent screened ${opportunities.length + discarded.length} opportunities across ${countryCount} countries and documented why every opportunity qualified or was excluded.`;
+    const briefingText = document.querySelector('#heroBriefingText');
+    if (briefingText) briefingText.textContent = opportunities.length ? `${opportunities.length} opportunities are ready for your review.` : 'No opportunities matched this search.';
+    const bidsExcluded = document.querySelector('#impactBidsExcluded');
+    if (bidsExcluded) bidsExcluded.textContent = String(discarded.length);
+    const impactValue = document.querySelector('#impactValue');
+    if (impactValue) impactValue.textContent = fmtCurrency(parsePublishedValue(opportunities));
+  }
+
   function refreshCountBadges() {
     const activeCount = typeof activeOpportunities === 'function' ? activeOpportunities().length : (typeof opportunities !== 'undefined' ? opportunities.length : 0);
     document.querySelectorAll('.today-nine').forEach(el => { el.textContent = String(activeCount); });
@@ -153,14 +182,25 @@
     if (typeof renderPipeline === 'function') { try { renderPipeline(); } catch (e) { /* pipeline uses its own mock stage data — safe to ignore */ } }
 
     refreshCountBadges();
+    refreshHeroCopy();
     renderExcludedContent();
     document.dispatchEvent(new CustomEvent('aceso:live-search-complete', { detail: data }));
   }
 
+  let geminiConfigured = null;
+  fetch('/api/health').then(r => r.json()).then(d => { geminiConfigured = Boolean(d.geminiConfigured); }).catch(() => {});
+
   async function runLiveSearch(keyword) {
     const button = document.querySelector('#searchNow');
     const original = button ? button.textContent : null;
-    if (button) { button.textContent = 'Searching…'; button.disabled = true; }
+    // With Gemini enabled, every opportunity that passes the non-AI filter
+    // gets a real (rate-limited) Gemini call — a full search can genuinely
+    // take several minutes on the free tier's request-per-minute quota, so
+    // the button needs to say so instead of looking stuck on "Searching…".
+    if (button) { button.textContent = geminiConfigured ? 'Searching… (AI scoring, can take several minutes)' : 'Searching…'; button.disabled = true; }
+    if (geminiConfigured && typeof toast === 'function') {
+      toast('Running the full AI evaluation — every opportunity that clears the non-AI filter gets a real Gemini call, paced to the free-tier rate limit. This can take several minutes.');
+    }
     try {
       const res = await fetch('/api/search', {
         method: 'POST',
@@ -190,6 +230,12 @@
     if (button) {
       button.onclick = () => runLiveSearch(document.querySelector('#todaySearch')?.value || '');
     }
+    // Other scripts set placeholder counts (e.g. "9 opportunities ready")
+    // before any real data exists — correct those to the true "nothing
+    // loaded yet" state immediately, instead of leaving a stale number
+    // visible for the whole (potentially multi-minute) first search.
+    refreshCountBadges();
+    refreshHeroCopy();
     // Open the app with real data instead of the static mock set.
     runLiveSearch('');
   }
