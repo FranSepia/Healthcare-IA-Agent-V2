@@ -113,11 +113,7 @@
         <div><small>Possible duplicates</small><b>${dupCount}</b></div>
         <div><small>Potential value (published)</small><b>${fmt(potentialValue)}</b></div>
       </div>
-      <div class="dashboard-row three" style="margin-top:16px">
-        <section class="chart-card"><p class="eyebrow">RESULTS BY SOURCE</p><div class="rank-list">${rankList(bySource)}</div></section>
-        <section class="chart-card"><p class="eyebrow">RESULTS BY REGION</p><div class="rank-list">${rankList(byRegion)}</div></section>
-        <section class="chart-card"><p class="eyebrow">RESULTS BY THEMATIC AREA</p><div class="rank-list">${rankList(byPillar)}</div></section>
-      </div>
+      <div id="dashboardExtraCharts" class="dashboard-charts-grid"></div>
       <div class="security-note"><span>🔒</span><div><b>Security note</b>No DevelopmentAid or Grants.gov credential is stored in this interface, its code or the repository — connection keys live in backend environment variables only.</div></div>
     </section>`;
   }
