@@ -1,25 +1,35 @@
-# Aceso Intelligence — Prototype Clones
+# Aceso Intelligence
 
-Static HTML/CSS/JS clones of the Aceso Intelligence opportunity-tracking prototype (originally from `aceso-intelligence-today-review.yael-rubio24.chatgpt.site`), extended with real Aceso Global criteria and a three-source intelligence model (Grants.gov, DevelopmentAid, Coefficient Giving).
+Real-time opportunity tracking for Aceso Global: a small Node/Express backend
+in `live-app/` that searches six free public sources (Grants.gov, World Bank,
+Coefficient Giving, Unitaid, UNDP, UNGM), deduplicates and scores everything
+with Gemini (falling back to a heuristic scorer if no key is set), and serves
+a frontend wired to those real results.
 
-No backend, no build step — each folder is a self-contained static site (open `index.html` or serve the folder statically).
+See `live-app/README.md` for setup, environment variables, and exactly where
+to put your Gemini API key.
 
-## Folders
+## Data and history
 
-- **`Clon HTML YAEL/`** — First iteration. Clone of the original prototype plus:
-  - Source badges (Grants.gov / DevelopmentAid / Coefficient Giving) and RFP-status classification (Open RFP / Closed RFP / Informational Announcement / Potential Future Opportunity) on every opportunity.
-  - An 8-criterion "Sources" page documenting the three-source connector design and the open questions for Aceso (DevelopmentAid membership, monitored Coefficient Giving pages, the MNCH criteria conflict).
-  - Criteria audited against Aceso's real backend spec (language, budget thresholds, geography red flags).
+Search results are **not** persisted by default. Set `FIREBASE_SERVICE_ACCOUNT_PATH`
+in `live-app/.env` to enable optional Firestore history: every completed
+search is saved, the app loads the most recent one instantly on open, and
+past searches are queryable via `GET /api/search-history`.
 
-- **`Clon HTML YAEL - ROI Iteration/`** — Second iteration, prepared for a three-day ROI validation pilot. Same visual design and navigation, with:
-  - **Criteria** rebuilt with Aceso's actual criteria (Focus Areas, Activities, Priority Regions, Preferred Funders, Budget, Languages, Quick Knock-outs, Review Flags, the MNCH open question) — every list is editable in the UI (add/remove/toggle, persisted to `localStorage`, with a reset-to-defaults option per criterion).
-  - A normalized opportunity data model (source ID, objective/scope, eligibility, qualifications, language, location/travel, RFP availability, keywords, first/last detected, duplicate status, review flags, explainable 10-factor fit score).
-  - Duplicate detection (New / Repeated / Possible Duplicate badges, merged-source records).
-  - A "Future opportunities watchlist" separating non-Open-RFP Coefficient Giving items from the active review queue.
-  - A three-day ROI validation dashboard section (agent-only / manual-only / found-by-both, false positives/negatives, review time, results by source/region/thematic area).
-
-- **`live-app/`** *(branch `feature/live-integration` only)* — The real, working version: a small Node/Express backend that actually calls six sources (Grants.gov, World Bank, Coefficient Giving, Unitaid, UNDP, UNGM — all free, no paid keys), deduplicates and scores everything with Gemini (or a fallback scorer if no key is set), and serves the same frontend wired to real data. Clicking **Search now** runs a real search. No database yet — every search is stateless, nothing is saved between runs. See `live-app/README.md` for setup and exactly where to put your Gemini API key.
+Opening the app does **not** start a new search automatically — it loads the
+last saved search (if Firestore is configured) or shows an empty state.
+Click **Search now** to run a fresh search against all six sources.
 
 ## Security note
 
-These are frontend-only prototypes with mock data — except `live-app/`, which is a real backend. Even there, no real credential or API key is ever stored in this repository or sent to the browser: `live-app/.env` (holding `GEMINI_API_KEY`) is git-ignored, and the key is only ever read server-side.
+No real credential or API key is ever stored in this repository or sent to
+the browser. `live-app/.env` (holding `GEMINI_API_KEY`) and
+`live-app/firebase-service-account.json` are both git-ignored; both are only
+ever read server-side.
+
+## Earlier static prototypes
+
+Two static HTML/CSS/JS design prototypes (`Clon HTML YAEL/` and
+`Clon HTML YAEL - ROI Iteration/`) preceded `live-app/` and are no longer
+part of `main` — they used mock/hardcoded data with no backend. They're
+preserved for reference at the `static-prototypes-archived` tag.
