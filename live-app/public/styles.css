@@ -359,3 +359,8 @@ body,button,input,textarea{font-family:var(--sans)}
 
 .viz-histogram{display:block;width:100%;max-width:340px;height:auto;margin:6px auto 0}
 .viz-histogram .viz-axis-label{font-size:10px;fill:#898781}
+
+/* Account avatar pinned at the bottom of every screen, always reachable */
+.people-dock{position:fixed;left:22px;bottom:22px;z-index:50}
+.people-dock .avatar{width:44px;height:44px;box-shadow:0 10px 24px rgba(9,35,63,.28)}
+@media(max-width:760px){.people-dock{left:14px;bottom:14px}}
