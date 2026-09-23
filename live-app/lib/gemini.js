@@ -2,14 +2,14 @@
 // Free key: https://aistudio.google.com/app/apikey (set GEMINI_API_KEY in live-app/.env)
 
 // gemini-3.6-flash (and the other newest-generation models) have a tiny
-// free-tier quota on this key, and the older 2.5 generation is "no longer
-// available to new users" on this project. The "lite" models are the
-// default choice for most free-tier apps, so they take the heaviest
-// traffic and were observed under sustained 503/timeout overload; the
-// less-used gemini-3-flash-preview responded reliably in under 2s in the
-// same conditions. Override via GEMINI_MODEL if a different one suits your
-// key better.
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
+// free-tier quota on this key, the older 2.5 generation is "no longer
+// available to new users" on this project, and gemini-3-flash-preview's
+// free tier is capped at 20 requests/day (exhausted almost immediately by
+// a real search). gemini-flash-lite-latest is the one that actually holds
+// up across a full search, despite occasional overload under heavy
+// external traffic (handled by the retry logic below). Override via
+// GEMINI_MODEL if a different one suits your key better.
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
 
 // The free tier only allows a handful of requests per minute (observed:
 // 5/min for gemini-3.6-flash) — firing every opportunity's evaluation call
