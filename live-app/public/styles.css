@@ -325,3 +325,18 @@ body,button,input,textarea{font-family:var(--sans)}
 
 .viz-wordcloud{display:flex;flex-wrap:wrap;gap:9px 14px;align-items:baseline;margin-top:8px;padding:6px 0}
 .viz-wordcloud span{color:var(--blue2);font-weight:700;cursor:default}
+
+.viz-radar{width:100%;height:auto;margin-top:4px}
+.viz-radar-ring{fill:none;stroke:#e1e0d9;stroke-width:1}
+.viz-radar-axis{stroke:#e1e0d9;stroke-width:1}
+.viz-radar-shape{fill:#2a78d6;fill-opacity:.18;stroke:#2a78d6;stroke-width:2}
+
+.viz-treemap{width:100%;height:auto;margin-top:6px}
+.viz-treemap-label{fill:#fff;font-size:11px;font-weight:700}
+.viz-treemap-value{fill:#fff;font-size:11px;opacity:.9;font-variant-numeric:tabular-nums}
+
+.viz-arc{width:100%;height:auto;margin-top:4px}
+.viz-arc path{cursor:pointer}
+
+.viz-flow{width:100%;height:auto;margin-top:6px}
+.viz-flow-label{fill:var(--ink);font-size:11px}
