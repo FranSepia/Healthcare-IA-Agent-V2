@@ -197,9 +197,9 @@ function mount(container) {
 
   function showTip(x, y, d) {
     const opps = d.opportunities || [];
-    tip.innerHTML = `<b>${d.name}</b>` + (opps.length
-      ? opps.slice(0, 5).map((o, i) => `<a data-globe-opp="${i}"><em>${o.score}%</em>${o.title}</a>`).join('')
-      : `<span>${d.detail}</span>`);
+    tip.innerHTML = `<b>${escapeHtml(d.name)}</b>` + (opps.length
+      ? opps.slice(0, 5).map((o, i) => `<a data-globe-opp="${i}"><em>${o.score}%</em>${escapeHtml(o.title)}</a>`).join('')
+      : `<span>${escapeHtml(d.detail)}</span>`);
     tip.querySelectorAll('[data-globe-opp]').forEach(a => {
       a.onclick = (e) => {
         e.stopPropagation();

@@ -44,9 +44,9 @@
   function sourceBadge(source) {
     if (!source) return '';
     if (typeof SOURCE_META !== 'undefined' && SOURCE_META[source]) {
-      return `<span class="tag source-tag ${SOURCE_META[source].cls}">${source}</span> `;
+      return `<span class="tag source-tag ${SOURCE_META[source].cls}">${escapeHtml(source)}</span> `;
     }
-    return `<span class="tag">${source}</span> `;
+    return `<span class="tag">${escapeHtml(source)}</span> `;
   }
 
   // Picks the Today digest so it always represents the sources that actually
@@ -100,10 +100,10 @@
     container.innerHTML = discarded.map((d, i) => `
       <article class="excluded-case ${i === 0 ? 'open' : ''}">
         <button class="excluded-case-head no-flag" aria-expanded="${i === 0}">
-          <span class="excluded-case-title"><small>${sourceBadge(d[4])}${d[1]} · ${d[2]}</small><b>${d[0]}</b></span>
-          <span class="excluded-case-reason">${d[3]}</span><span class="case-chevron">›</span>
+          <span class="excluded-case-title"><small>${sourceBadge(d[4])}${escapeHtml(d[1])} · ${escapeHtml(d[2])}</small><b>${escapeHtml(d[0])}</b></span>
+          <span class="excluded-case-reason">${escapeHtml(d[3])}</span><span class="case-chevron">›</span>
         </button>
-        <div class="excluded-explanation"><small>WHY THIS IS NOT A MATCH</small><p>${d[3]}</p><div><button class="keep-excluded">Keep excluded</button><button class="recover-case">Recover for human review</button></div></div>
+        <div class="excluded-explanation"><small>WHY THIS IS NOT A MATCH</small><p>${escapeHtml(d[3])}</p><div><button class="keep-excluded">Keep excluded</button><button class="recover-case">Recover for human review</button></div></div>
       </article>`).join('');
     container.querySelectorAll('.excluded-case-head').forEach(btn => btn.onclick = () => {
       const card = btn.closest('.excluded-case');
