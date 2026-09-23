@@ -234,7 +234,7 @@ function mount(container) {
     // relative to the globe's surface.
     const wide = w > h * 1.25;
     const size = Math.max(w, h);
-    const scale = wide ? size * 0.48 : Math.min(w, h) * 0.36;
+    const scale = wide ? size * 0.40 : Math.min(w, h) * 0.36;
     const projection = d3.geoOrthographic().translate([w / 2, h / 2]).scale(scale).rotate(rotation).clipAngle(90).precision(.5);
     const path = d3.geoPath(projection);
     svg.attr('viewBox', `0 0 ${w} ${h}`).attr('preserveAspectRatio', 'xMidYMid slice').selectAll('*').remove();

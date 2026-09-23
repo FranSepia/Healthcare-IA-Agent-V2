@@ -224,7 +224,14 @@ async function evaluateOpportunity(opp, criteria) {
     evaluation = heuristicEvaluate(opp, criteria);
   }
 
-  const reviewFlags = Array.from(new Set([...(evaluation.reviewFlags || []), ...knockout.flags]));
+  // Gemini picks its own reviewFlags independently of the deterministic
+  // checks above and can disagree with them — e.g. flagging "Budget not
+  // published" even though a real value was extracted from the source.
+  // The parsed opp.value is the ground truth for this specific flag, so
+  // it always wins over whatever Gemini said.
+  let reviewFlags = Array.from(new Set([...(evaluation.reviewFlags || []), ...knockout.flags]));
+  const hasPublishedBudget = opp.value && opp.value !== 'Not disclosed';
+  if (hasPublishedBudget) reviewFlags = reviewFlags.filter(f => f !== 'Budget not published');
   const fitTier = fitTierFor(evaluation.score, false);
 
   return { ...evaluation, fitTier, reviewFlags, knockedOut: false, usedGemini };
