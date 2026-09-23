@@ -283,7 +283,7 @@ body,button,input,textarea{font-family:var(--sans)}
 #dashboardView small,#dashboardView button,#dashboardView li,#dashboardView .chart-callout,#dashboardView .deadline-insight{font-size:12px}.executive-kpis small{font-size:12px}.executive-kpis p{font-size:12px}.trend-chart>div b,.trend-chart>div span,.native-funnel b small,.native-funnel em,.submission-chart span b,.submission-chart span small{font-size:11px}.funder-table>div{font-size:12px}.dashboard-copilot>button,.dashboard-copilot input{font-size:12px}
 
 /* Dashboard analytics charts — real-data visualizations (bar/funnel/scatter/heatmap/word cloud) */
-.dashboard-charts-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:16px}
+.dashboard-charts-grid{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:start;gap:14px;margin-top:16px}
 .chart-card-wide{grid-column:1/-1}
 .chart-card .eyebrow{display:flex;align-items:center;gap:6px}
 .chart-card-note{font-weight:400;color:#a3b0bd;text-transform:none;letter-spacing:0}
@@ -308,10 +308,10 @@ body,button,input,textarea{font-family:var(--sans)}
 .viz-funnel-tip{position:absolute;left:78px;bottom:calc(100% + 4px);background:#0b0b0b;color:#fff;font-size:11px;padding:5px 9px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:3}
 .viz-funnel-row:hover .viz-funnel-tip,.viz-funnel-row:focus-visible .viz-funnel-tip{opacity:1}
 
-.viz-scatter{width:100%;height:auto;margin-top:4px}
+.viz-scatter{display:block;width:100%;max-width:920px;height:auto;margin:4px auto 0}
 .viz-scatter .viz-grid{stroke:#e1e0d9;stroke-width:1}
 .viz-scatter .viz-axis{stroke:#c3c2b7;stroke-width:1}
-.viz-scatter .viz-axis-label{fill:#898781;font-size:9px}
+.viz-scatter .viz-axis-label{fill:#898781;font-size:11px}
 .viz-scatter circle{cursor:pointer;transition:r .1s}
 .viz-scatter circle:hover,.viz-scatter circle:focus-visible{r:8}
 .viz-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--muted)}
@@ -323,20 +323,23 @@ body,button,input,textarea{font-family:var(--sans)}
 .viz-heat-cell:hover .viz-heat-tip,.viz-heat-cell:focus-visible .viz-heat-tip{opacity:1}
 .viz-heat-labels{display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--muted)}
 
-.viz-wordcloud{display:flex;flex-wrap:wrap;gap:9px 14px;align-items:baseline;margin-top:8px;padding:6px 0}
-.viz-wordcloud span{color:var(--blue2);font-weight:700;cursor:default}
+.viz-wordcloud{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:8px;padding:6px 0}
+.viz-cloud-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-weight:700;cursor:default;line-height:1.3}
+.viz-cloud-chip i{font-style:normal;font-weight:800;opacity:.75;font-size:.8em}
 
-.viz-radar{width:100%;height:auto;margin-top:4px}
+.viz-radar{display:block;width:100%;max-width:280px;height:auto;margin:4px auto 0}
+.viz-radar .viz-axis-label{font-size:11px}
 .viz-radar-ring{fill:none;stroke:#e1e0d9;stroke-width:1}
 .viz-radar-axis{stroke:#e1e0d9;stroke-width:1}
 .viz-radar-shape{fill:#2a78d6;fill-opacity:.18;stroke:#2a78d6;stroke-width:2}
 
-.viz-treemap{width:100%;height:auto;margin-top:6px}
+.viz-treemap{display:block;width:100%;max-width:340px;height:auto;margin:6px auto 0}
 .viz-treemap-label{fill:#fff;font-size:11px;font-weight:700}
 .viz-treemap-value{fill:#fff;font-size:11px;opacity:.9;font-variant-numeric:tabular-nums}
 
-.viz-arc{width:100%;height:auto;margin-top:4px}
+.viz-arc{display:block;width:100%;max-width:920px;height:auto;margin:4px auto 0}
+.viz-arc .viz-axis-label{font-size:11px}
 .viz-arc path{cursor:pointer}
 
-.viz-flow{width:100%;height:auto;margin-top:6px}
-.viz-flow-label{fill:var(--ink);font-size:11px}
+.viz-flow{display:block;width:100%;max-width:920px;height:auto;margin:6px auto 0}
+.viz-flow-label{fill:var(--ink);font-size:12px}

@@ -55,7 +55,7 @@
   // ---- Scatter/bubble: fit score (x) vs. potential value (y), color by pillar (capped) ----
   function scatterHTML(points, opts = {}) {
     if (points.length < 3) return emptyState('a fit-vs-value scatter plot');
-    const w = 560, h = 260, pad = { l: 46, r: 16, t: 12, b: 30 };
+    const w = 920, h = 220, pad = { l: 46, r: 16, t: 12, b: 30 };
     const maxVal = Math.max(...points.map(p => p.value));
     const pillars = [...new Set(points.map(p => p.pillar))];
     const topPillars = pillars.slice(0, 3);
@@ -100,10 +100,11 @@
     if (entries.length < 4) return emptyState('a theme word cloud');
     const max = entries[0][1];
     return `<div class="viz-wordcloud">${entries.map(([word, count]) => {
-      const scale = 0.7 + (count / max) * 0.9;
-      const opacity = 0.55 + (count / max) * 0.45;
+      const ratio = count / max;
+      const step = Math.max(0, Math.min(SEQ_BLUE.length - 1, Math.round(ratio * (SEQ_BLUE.length - 1))));
+      const dark = step >= 4;
       const safeWord = escapeHtml(word);
-      return `<span style="font-size:${scale.toFixed(2)}em;opacity:${opacity.toFixed(2)}" tabindex="0" aria-label="${safeWord}: ${count} opportunities">${safeWord}</span>`;
+      return `<span class="viz-cloud-chip" style="background:${SEQ_BLUE[step]};color:${dark ? '#fff' : '#12375e'};font-size:${(11 + ratio * 6).toFixed(1)}px" tabindex="0" aria-label="${safeWord}: ${count} opportunities">${safeWord}<i>${count}</i></span>`;
     }).join('')}</div>`;
   }
 
@@ -150,7 +151,7 @@
   }
   function treemapHTML(rows) {
     if (rows.length < 3) return emptyState('a value-by-theme treemap');
-    const w = 560, h = 230;
+    const w = 340, h = 210;
     const sorted = rows.slice().sort((a, b) => b.value - a.value);
     const total = sorted.reduce((s, r) => s + r.value, 0);
     const scale = (w * h) / total;
@@ -169,7 +170,7 @@
     const sources = [...new Set(edges.map(e => e.source))].slice(0, 5);
     const pillars = [...new Set(edges.map(e => e.pillar))].slice(0, 4);
     const nodes = [...sources.map(name => ({ name, type: 'source' })), ...pillars.map(name => ({ name, type: 'pillar' }))];
-    const w = 560, h = 230, margin = 50;
+    const w = 920, h = 200, margin = 70;
     const step = (w - margin * 2) / Math.max(1, nodes.length - 1);
     const xFor = name => margin + nodes.findIndex(n => n.name === name) * step;
     const baseline = h - 70;
@@ -198,7 +199,7 @@
   // ---- Flow diagram: Found -> Relevant/Discarded -> fit tier of the relevant ones (real, 2-stage) ----
   function flowHTML(found, relevantCount, discardedCount, tierCounts) {
     if (found < 4) return emptyState('a search-to-decision flow diagram');
-    const w = 560, h = 260, colX = [30, 210, 390], nodeW = 50;
+    const w = 920, h = 240, colX = [30, 380, 730], nodeW = 55;
     const scale = (h - 20) / found;
     const bNodes = [
       { name: 'Relevant', value: relevantCount, color: '#2a78d6' },
