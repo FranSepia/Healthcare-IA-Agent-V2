@@ -285,7 +285,7 @@ body,button,input,textarea{font-family:var(--sans)}
 /* Dashboard analytics charts — real-data visualizations (bar/funnel/scatter/heatmap/word cloud) */
 .dashboard-charts-grid{column-count:3;column-gap:14px;margin-top:16px}
 .dashboard-charts-grid .chart-card{display:inline-block;width:100%;break-inside:avoid;margin:0 0 14px}
-.chart-card-wide{column-span:all}
+.dashboard-charts-grid .chart-card-wide{display:block;column-span:all;width:auto}
 @media(max-width:1180px){.dashboard-charts-grid{column-count:2}}
 @media(max-width:760px){.dashboard-charts-grid{column-count:1}}
 .chart-card .eyebrow{display:flex;align-items:center;gap:6px}
@@ -324,8 +324,8 @@ body,button,input,textarea{font-family:var(--sans)}
 .viz-heat-cell:hover .viz-heat-tip,.viz-heat-cell:focus-visible .viz-heat-tip{opacity:1}
 .viz-heat-labels{display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--muted)}
 
-.viz-wordcloud{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:8px;padding:6px 0}
-.viz-cloud-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-weight:700;cursor:default;line-height:1.3}
+.viz-wordcloud{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:6px;padding:2px 0}
+.viz-cloud-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:16px;font-weight:700;cursor:default;line-height:1.25}
 .viz-cloud-chip i{font-style:normal;font-weight:800;opacity:.75;font-size:.8em}
 
 .viz-radar{display:block;width:100%;max-width:280px;height:auto;margin:4px auto 0}
@@ -338,12 +338,12 @@ body,button,input,textarea{font-family:var(--sans)}
 .viz-treemap-label{fill:#fff;font-size:11px;font-weight:700}
 .viz-treemap-value{fill:#fff;font-size:11px;opacity:.9;font-variant-numeric:tabular-nums}
 
-.viz-arc{display:block;width:100%;max-width:920px;height:auto;margin:4px auto 0}
-.viz-arc .viz-axis-label{font-size:11px}
+.viz-arc{display:block;width:100%;max-width:1120px;height:auto;margin:4px auto 0}
+.viz-arc .viz-axis-label{font-size:12px}
 .viz-arc path{cursor:pointer}
 
-.viz-flow{display:block;width:100%;max-width:920px;height:auto;margin:6px auto 0}
-.viz-flow-label{fill:var(--ink);font-size:12px}
+.viz-flow{display:block;width:100%;max-width:1120px;height:auto;margin:6px auto 0}
+.viz-flow-label{fill:var(--ink);font-size:13px}
 
 .viz-donut-wrap{display:flex;align-items:center;gap:18px;margin-top:6px;flex-wrap:wrap}
 .viz-donut{width:130px;height:130px;flex:none}

@@ -9,6 +9,22 @@
   const OTHER_COLOR = '#898781';
   const SEQ_BLUE = ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#2a78d6', '#1c5cab', '#104281'];
 
+  // Illustrative points for the scatter plot when a search hasn't returned
+  // enough opportunities with both a real score and a published budget to
+  // plot — same "clearly labeled example" pattern as the pipeline tab.
+  const EXAMPLE_SCATTER = [
+    { title: 'Health Financing Systems Assessment', score: 88, value: 1400000, pillar: 'Health financing' },
+    { title: 'Digital Health Interoperability Roadmap', score: 82, value: 620000, pillar: 'Digital health' },
+    { title: 'Universal Health Coverage Policy Advisory', score: 79, value: 480000, pillar: 'UHC transition' },
+    { title: 'Provider Payment Reform Technical Assistance', score: 91, value: 1100000, pillar: 'Provider payments' },
+    { title: 'Community Health Worker Program Design', score: 85, value: 750000, pillar: 'Service delivery' },
+    { title: 'Maternal Health Systems Strengthening', score: 77, value: 890000, pillar: 'Maternal health' },
+    { title: 'Health Information Systems Modernization', score: 92, value: 1650000, pillar: 'Health financing' },
+    { title: 'Regional Health Financing Support', score: 84, value: 940000, pillar: 'Health financing' },
+    { title: 'Routine Immunization Data Quality Review', score: 58, value: 210000, pillar: 'Digital health' },
+    { title: 'Health Workforce Capacity Building', score: 65, value: 340000, pillar: 'Service delivery' }
+  ];
+
   function parseValue(str) {
     const m = /\$([0-9.]+)\s?(million|billion|thousand|M|K|B)?/i.exec(str || '');
     if (!m) return null;
@@ -97,7 +113,7 @@
   function wordCloudHTML(keywords) {
     const counts = new Map();
     keywords.forEach(k => { const key = k.trim(); if (key) counts.set(key, (counts.get(key) || 0) + 1); });
-    const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 16);
+    const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
     if (entries.length < 4) return emptyState('a theme word cloud');
     const n = entries.length;
     // Ranked (not raw-ratio) scaling — guarantees a dramatic size/color
@@ -105,7 +121,7 @@
     // cluster close together (e.g. mostly 1s and 2s).
     return `<div class="viz-wordcloud">${entries.map(([word, count], i) => {
       const rank = n > 1 ? i / (n - 1) : 0;
-      const size = 30 - rank * 19;
+      const size = 19 - rank * 10;
       const step = Math.round((1 - rank) * (SEQ_BLUE.length - 1));
       const dark = step >= 4;
       const safeWord = escapeHtml(word);
@@ -215,7 +231,7 @@
     const sources = [...new Set(edges.map(e => e.source))].slice(0, 5);
     const pillars = [...new Set(edges.map(e => e.pillar))].slice(0, 4);
     const nodes = [...sources.map(name => ({ name, type: 'source' })), ...pillars.map(name => ({ name, type: 'pillar' }))];
-    const w = 920, h = 200, margin = 70;
+    const w = 1120, h = 260, margin = 80;
     const step = (w - margin * 2) / Math.max(1, nodes.length - 1);
     const xFor = name => margin + nodes.findIndex(n => n.name === name) * step;
     const baseline = h - 70;
@@ -231,11 +247,11 @@
     // rule: a label that won't fit doesn't get clipped) — nodes carry their
     // name via hover tooltip instead, with short alternating-offset labels
     // beneath so most are still readable without hovering.
-    const dots = nodes.map(n => `<circle cx="${xFor(n.name).toFixed(1)}" cy="${baseline}" r="5" fill="${n.type === 'source' ? '#2a78d6' : '#eb6834'}" tabindex="0"><title>${escapeHtml(n.name)}</title></circle>`).join('');
+    const dots = nodes.map(n => `<circle cx="${xFor(n.name).toFixed(1)}" cy="${baseline}" r="6" fill="${n.type === 'source' ? '#2a78d6' : '#eb6834'}" tabindex="0"><title>${escapeHtml(n.name)}</title></circle>`).join('');
     const labels = nodes.map((n, i) => {
       const x = xFor(n.name);
-      const short = n.name.length > 11 ? n.name.slice(0, 10) + '…' : n.name;
-      const rowY = baseline + 16 + (i % 2) * 13;
+      const short = n.name.length > 15 ? n.name.slice(0, 14) + '…' : n.name;
+      const rowY = baseline + 20 + (i % 2) * 16;
       return `<text x="${x.toFixed(1)}" y="${rowY}" class="viz-axis-label" text-anchor="middle">${escapeHtml(short)}</text>`;
     }).join('');
     return `<svg viewBox="0 0 ${w} ${h}" class="viz-arc" role="img" aria-label="Which sources surface which themes">${arcs}${dots}${labels}</svg><div class="viz-legend"><span><i style="background:#2a78d6"></i>Source</span><span><i style="background:#eb6834"></i>Theme</span></div>`;
@@ -244,7 +260,7 @@
   // ---- Flow diagram: Found -> Relevant/Discarded -> fit tier of the relevant ones (real, 2-stage) ----
   function flowHTML(found, relevantCount, discardedCount, tierCounts) {
     if (found < 4) return emptyState('a search-to-decision flow diagram');
-    const w = 920, h = 240, colX = [30, 380, 730], nodeW = 55;
+    const w = 1120, h = 300, colX = [30, 460, 890], nodeW = 65;
     const scale = (h - 20) / found;
     const bNodes = [
       { name: 'Relevant', value: relevantCount, color: '#2a78d6' },
@@ -294,7 +310,9 @@
     const avgScoreBySource = Object.entries(scoreSumBySource).map(([name, sum]) => ({ name, value: sum / scoreCountBySource[name] })).sort((a, b) => b.value - a.value);
     const sourcePillarEdges = Object.entries(sourcePillarWeight).map(([key, weight]) => { const [source, pillar] = key.split('|'); return { source, pillar, weight }; }).sort((a, b) => b.weight - a.weight);
 
-    const scatterPoints = opps.map(o => ({ title: o.title, score: o.score, value: parseValue(o.value), pillar: o.pillar })).filter(p => p.value);
+    const realScatterPoints = opps.map(o => ({ title: o.title, score: o.score, value: parseValue(o.value), pillar: o.pillar })).filter(p => p.value);
+    const scatterIsExample = realScatterPoints.length < 3;
+    const scatterPoints = scatterIsExample ? EXAMPLE_SCATTER : realScatterPoints;
     const scores = opps.map(o => o.score).filter(s => typeof s === 'number');
     const dueDates = opps.map(o => o.due).filter(Boolean);
     const keywords = opps.flatMap(o => (o.meta && o.meta.keywords) || []);
@@ -318,7 +336,7 @@
         ${funnelHTML(pipeline.stages, pipeline.counts)}
       </section>` : ''}
       <section class="chart-card chart-card-wide">
-        <p class="eyebrow">FIT SCORE VS. POTENTIAL VALUE</p>
+        <p class="eyebrow">FIT SCORE VS. POTENTIAL VALUE${scatterIsExample ? ' <span class="chart-card-note">(example data)</span>' : ''}</p>
         ${scatterHTML(scatterPoints)}
       </section>
       <section class="chart-card">
