@@ -283,13 +283,14 @@ body,button,input,textarea{font-family:var(--sans)}
 #dashboardView small,#dashboardView button,#dashboardView li,#dashboardView .chart-callout,#dashboardView .deadline-insight{font-size:12px}.executive-kpis small{font-size:12px}.executive-kpis p{font-size:12px}.trend-chart>div b,.trend-chart>div span,.native-funnel b small,.native-funnel em,.submission-chart span b,.submission-chart span small{font-size:11px}.funder-table>div{font-size:12px}.dashboard-copilot>button,.dashboard-copilot input{font-size:12px}
 
 /* Dashboard analytics charts — real-data visualizations (bar/funnel/scatter/heatmap/word cloud) */
-.dashboard-charts-grid{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:start;gap:14px;margin-top:16px}
-.chart-card-wide{grid-column:1/-1}
+.dashboard-charts-grid{column-count:3;column-gap:14px;margin-top:16px}
+.dashboard-charts-grid .chart-card{display:inline-block;width:100%;break-inside:avoid;margin:0 0 14px}
+.chart-card-wide{column-span:all}
+@media(max-width:1180px){.dashboard-charts-grid{column-count:2}}
+@media(max-width:760px){.dashboard-charts-grid{column-count:1}}
 .chart-card .eyebrow{display:flex;align-items:center;gap:6px}
 .chart-card-note{font-weight:400;color:#a3b0bd;text-transform:none;letter-spacing:0}
 .chart-empty{padding:28px 4px;color:var(--muted);font-size:13px;text-align:center}
-@media(max-width:1180px){.dashboard-charts-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:760px){.dashboard-charts-grid{grid-template-columns:1fr}}
 
 .viz-bars{display:flex;flex-direction:column;gap:9px;margin-top:6px}
 .viz-bar-row{position:relative;display:grid;grid-template-columns:92px 1fr 52px;align-items:center;gap:8px}
@@ -343,3 +344,13 @@ body,button,input,textarea{font-family:var(--sans)}
 
 .viz-flow{display:block;width:100%;max-width:920px;height:auto;margin:6px auto 0}
 .viz-flow-label{fill:var(--ink);font-size:12px}
+
+.viz-donut-wrap{display:flex;align-items:center;gap:18px;margin-top:6px;flex-wrap:wrap}
+.viz-donut{width:130px;height:130px;flex:none}
+.viz-donut-total{font:800 30px var(--sans);fill:var(--ink)}
+.viz-donut-total-label{font-size:10px;fill:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.viz-legend-stack{display:flex;flex-direction:column;gap:7px;font-size:12px}
+.viz-legend-stack i{width:9px;height:9px;border-radius:2px}
+
+.viz-histogram{display:block;width:100%;max-width:340px;height:auto;margin:6px auto 0}
+.viz-histogram .viz-axis-label{font-size:10px;fill:#898781}

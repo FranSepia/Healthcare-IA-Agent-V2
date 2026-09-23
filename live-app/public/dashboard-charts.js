@@ -62,7 +62,8 @@
     const colorFor = pillar => { const i = topPillars.indexOf(pillar); return i >= 0 ? CATEGORICAL[i] : OTHER_COLOR; };
     const x = score => pad.l + (score / 100) * (w - pad.l - pad.r);
     const y = val => h - pad.b - (val / (maxVal || 1)) * (h - pad.t - pad.b);
-    const gridlines = [0, 25, 50, 75, 100].map(gx => `<line x1="${x(gx)}" y1="${pad.t}" x2="${x(gx)}" y2="${h - pad.b}" class="viz-grid"/><text x="${x(gx)}" y="${h - pad.b + 16}" class="viz-axis-label" text-anchor="middle">${gx}</text>`).join('');
+    const gxAnchor = gx => gx === 0 ? 'start' : gx === 100 ? 'end' : 'middle';
+    const gridlines = [0, 25, 50, 75, 100].map(gx => `<line x1="${x(gx)}" y1="${pad.t}" x2="${x(gx)}" y2="${h - pad.b}" class="viz-grid"/><text x="${x(gx)}" y="${h - pad.b + 16}" class="viz-axis-label" text-anchor="${gxAnchor(gx)}">${gx}</text>`).join('');
     const dots = points.map(p => `<circle cx="${x(p.score).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="6" fill="${colorFor(p.pillar)}" stroke="#fcfcfb" stroke-width="2" tabindex="0"><title>${escapeHtml(p.title)} — ${p.score}% fit, ${fmtMoney(p.value)}, ${escapeHtml(p.pillar)}</title></circle>`).join('');
     const legend = (topPillars.length > 1 ? topPillars.map((p, i) => `<span><i style="background:${CATEGORICAL[i]}"></i>${escapeHtml(p)}</span>`).join('') + (pillars.length > 3 ? `<span><i style="background:${OTHER_COLOR}"></i>Other</span>` : '') : '');
     return `<svg viewBox="0 0 ${w} ${h}" class="viz-scatter" role="img" aria-label="Fit score versus potential value scatter plot">${gridlines}<line x1="${pad.l}" y1="${h - pad.b}" x2="${w - pad.r}" y2="${h - pad.b}" class="viz-axis"/><text x="${w / 2}" y="${h - 4}" class="viz-axis-label" text-anchor="middle">Fit score</text>${dots}</svg>${legend ? `<div class="viz-legend">${legend}</div>` : ''}`;
@@ -96,16 +97,60 @@
   function wordCloudHTML(keywords) {
     const counts = new Map();
     keywords.forEach(k => { const key = k.trim(); if (key) counts.set(key, (counts.get(key) || 0) + 1); });
-    const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18);
+    const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 16);
     if (entries.length < 4) return emptyState('a theme word cloud');
-    const max = entries[0][1];
-    return `<div class="viz-wordcloud">${entries.map(([word, count]) => {
-      const ratio = count / max;
-      const step = Math.max(0, Math.min(SEQ_BLUE.length - 1, Math.round(ratio * (SEQ_BLUE.length - 1))));
+    const n = entries.length;
+    // Ranked (not raw-ratio) scaling — guarantees a dramatic size/color
+    // spread from most to least frequent even when the actual counts
+    // cluster close together (e.g. mostly 1s and 2s).
+    return `<div class="viz-wordcloud">${entries.map(([word, count], i) => {
+      const rank = n > 1 ? i / (n - 1) : 0;
+      const size = 30 - rank * 19;
+      const step = Math.round((1 - rank) * (SEQ_BLUE.length - 1));
       const dark = step >= 4;
       const safeWord = escapeHtml(word);
-      return `<span class="viz-cloud-chip" style="background:${SEQ_BLUE[step]};color:${dark ? '#fff' : '#12375e'};font-size:${(11 + ratio * 6).toFixed(1)}px" tabindex="0" aria-label="${safeWord}: ${count} opportunities">${safeWord}<i>${count}</i></span>`;
+      return `<span class="viz-cloud-chip" style="background:${SEQ_BLUE[step]};color:${dark ? '#fff' : '#12375e'};font-size:${size.toFixed(1)}px;font-weight:${dark ? 800 : 700}" tabindex="0" aria-label="${safeWord}: ${count} opportunities">${safeWord}<i>${count}</i></span>`;
     }).join('')}</div>`;
+  }
+
+  // ---- Donut: fit tier distribution (real, part-to-whole) ----
+  function donutHTML(tierCounts) {
+    const order = [['Strong Fit', '#1baf7a'], ['Potential Fit', '#eda100'], ['Low Fit', '#e34948']];
+    const rows = order.map(([name, color]) => ({ name, color, value: tierCounts[name] || 0 })).filter(r => r.value > 0);
+    const total = rows.reduce((s, r) => s + r.value, 0);
+    if (total < 3) return emptyState('a fit-tier breakdown');
+    const r = 66, cx = 90, cy = 90, circumference = 2 * Math.PI * r;
+    let offset = 0;
+    const arcs = rows.map(row => {
+      const frac = row.value / total;
+      const dash = frac * circumference;
+      const el = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${row.color}" stroke-width="24" stroke-dasharray="${dash.toFixed(1)} ${(circumference - dash).toFixed(1)}" stroke-dashoffset="${(-offset).toFixed(1)}" transform="rotate(-90 ${cx} ${cy})" tabindex="0"><title>${escapeHtml(row.name)}: ${row.value} (${Math.round(frac * 100)}%)</title></circle>`;
+      offset += dash;
+      return el;
+    }).join('');
+    const legend = rows.map(r2 => `<span><i style="background:${r2.color}"></i>${escapeHtml(r2.name)} — ${r2.value} (${Math.round(r2.value / total * 100)}%)</span>`).join('');
+    return `<div class="viz-donut-wrap"><svg viewBox="0 0 180 180" class="viz-donut" role="img" aria-label="Fit tier distribution">${arcs}<text x="90" y="86" text-anchor="middle" class="viz-donut-total">${total}</text><text x="90" y="104" text-anchor="middle" class="viz-donut-total-label">scored</text></svg><div class="viz-legend viz-legend-stack">${legend}</div></div>`;
+  }
+
+  // ---- Histogram: fit-score distribution (real, 10-point buckets) ----
+  function histogramHTML(scores) {
+    if (scores.length < 5) return emptyState('a fit-score distribution');
+    const buckets = Array.from({ length: 10 }, (_, i) => ({ from: i * 10, count: 0 }));
+    scores.forEach(s => { const idx = Math.min(9, Math.floor(s / 10)); buckets[idx].count++; });
+    const max = Math.max(...buckets.map(b => b.count)) || 1;
+    const w = 320, h = 160, pad = { l: 4, r: 4, t: 6, b: 22 };
+    const bw = (w - pad.l - pad.r) / buckets.length;
+    const bars = buckets.map((b, i) => {
+      const bh = (b.count / max) * (h - pad.t - pad.b);
+      const x = pad.l + i * bw;
+      const y = h - pad.b - bh;
+      const color = b.from >= 80 ? '#1baf7a' : b.from >= 50 ? '#2a78d6' : '#c3c2b7';
+      return `<rect x="${(x + 2).toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(0, bw - 4).toFixed(1)}" height="${Math.max(0, bh).toFixed(1)}" rx="3" fill="${color}" tabindex="0"><title>${b.from}-${b.from + 9}% fit: ${b.count} opportunit${b.count === 1 ? 'y' : 'ies'}</title></rect>`;
+    }).join('');
+    const anchorFor = v => v === 0 ? 'start' : v === 100 ? 'end' : 'middle';
+    const axis = `<line x1="${pad.l}" y1="${h - pad.b}" x2="${w - pad.r}" y2="${h - pad.b}" class="viz-axis"/>` +
+      [0, 50, 100].map(v => `<text x="${(pad.l + (v / 100) * (w - pad.l - pad.r)).toFixed(1)}" y="${h - 6}" class="viz-axis-label" text-anchor="${anchorFor(v)}">${v}</text>`).join('');
+    return `<svg viewBox="0 0 ${w} ${h}" class="viz-histogram" role="img" aria-label="Distribution of fit scores">${bars}${axis}</svg>`;
   }
 
   // ---- Radar/spider: average fit score by source (real, computed) ----
@@ -250,6 +295,7 @@
     const sourcePillarEdges = Object.entries(sourcePillarWeight).map(([key, weight]) => { const [source, pillar] = key.split('|'); return { source, pillar, weight }; }).sort((a, b) => b.weight - a.weight);
 
     const scatterPoints = opps.map(o => ({ title: o.title, score: o.score, value: parseValue(o.value), pillar: o.pillar })).filter(p => p.value);
+    const scores = opps.map(o => o.score).filter(s => typeof s === 'number');
     const dueDates = opps.map(o => o.due).filter(Boolean);
     const keywords = opps.flatMap(o => (o.meta && o.meta.keywords) || []);
     const pipeline = typeof window.pipelineStats === 'function' ? window.pipelineStats() : null;
@@ -282,6 +328,14 @@
       <section class="chart-card">
         <p class="eyebrow">MOST COMMON THEMES</p>
         ${wordCloudHTML(keywords)}
+      </section>
+      <section class="chart-card">
+        <p class="eyebrow">FIT TIER BREAKDOWN</p>
+        ${donutHTML(tierCounts)}
+      </section>
+      <section class="chart-card">
+        <p class="eyebrow">FIT SCORE DISTRIBUTION</p>
+        ${histogramHTML(scores)}
       </section>
       <section class="chart-card">
         <p class="eyebrow">AVERAGE FIT BY SOURCE</p>
