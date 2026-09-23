@@ -115,23 +115,26 @@ function computeActivity() {
   for (const o of opps) {
     const country = (o.country || '').split(',')[0].split('(')[0].trim();
     if (!country || /^(global|not specified|not disclosed)$/i.test(country)) continue;
-    if (!byCountry.has(country)) byCountry.set(country, { count: 0, bestScore: 0, sources: new Set() });
+    if (!byCountry.has(country)) byCountry.set(country, { count: 0, bestScore: 0, sources: new Set(), opportunities: [] });
     const entry = byCountry.get(country);
     entry.count += 1;
     entry.bestScore = Math.max(entry.bestScore, o.score || 0);
     if (o.source) entry.sources.add(o.source);
+    entry.opportunities.push(o);
   }
 
   const points = [];
   for (const [name, entry] of byCountry) {
     const centroid = countryCentroid(name);
     if (!centroid) continue;
+    entry.opportunities.sort((a, b) => (b.score || 0) - (a.score || 0));
     points.push({
       name,
       lon: centroid[0],
       lat: centroid[1],
       count: entry.count,
       bestScore: entry.bestScore,
+      opportunities: entry.opportunities,
       detail: `${entry.count} active opportunit${entry.count === 1 ? 'y' : 'ies'} · ${entry.bestScore}% highest fit`
     });
   }
@@ -154,12 +157,6 @@ function refreshActivity() {
     el.innerHTML = top.length
       ? top.map(a => `<span><b>${a.count}</b>${a.name}</span>`).join('')
       : '<span><b>0</b>No active opportunities</span>';
-  });
-  document.querySelectorAll('[data-globe-selection]').forEach(el => {
-    const top = activity[0];
-    const b = el.querySelector('b'), span = el.querySelector('span');
-    if (top) { b.textContent = top.name; span.textContent = top.detail; }
-    else { b.textContent = '—'; span.textContent = 'No active opportunities in this search'; }
   });
 }
 
@@ -188,15 +185,42 @@ function mount(container) {
 
   function clampLat(l) { return Math.max(-70, Math.min(70, l)); }
 
-  function updateSelectionCard(d) {
-    const card = container.closest('.dashboard-world, .radar-card, .dashboard-map')?.querySelector('[data-globe-selection], .globe-selection');
-    if (card) { card.querySelector('b').textContent = d.name; card.querySelector('span').textContent = d.detail; }
+  // A small text tooltip that only ever appears right where the user
+  // clicked a point — nothing shows until then, and nothing persists
+  // as a fixed panel over the map.
+  const tip = document.createElement('div');
+  tip.className = 'globe-point-tip';
+  tip.hidden = true;
+  container.appendChild(tip);
+
+  function hideTip() { tip.hidden = true; }
+
+  function showTip(x, y, d) {
+    const opps = d.opportunities || [];
+    tip.innerHTML = `<b>${d.name}</b>` + (opps.length
+      ? opps.slice(0, 5).map((o, i) => `<a data-globe-opp="${i}"><em>${o.score}%</em>${o.title}</a>`).join('')
+      : `<span>${d.detail}</span>`);
+    tip.querySelectorAll('[data-globe-opp]').forEach(a => {
+      a.onclick = (e) => {
+        e.stopPropagation();
+        const o = opps[Number(a.dataset.globeOpp)];
+        if (o && typeof window.openDetail === 'function') window.openDetail(o);
+      };
+    });
+    tip.hidden = false;
+    const w = container.clientWidth, h = container.clientHeight;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = x + 12, top = y - th / 2;
+    if (left + tw > w - 4) left = x - tw - 12;
+    left = Math.max(4, left);
+    top = Math.max(4, Math.min(top, h - th - 4));
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
   }
 
   function beginTravelTo(d) {
     travel = { fromLon: rotation[0], fromLat: rotation[1], toLon: -d.lon, toLat: clampLat(-d.lat), start: Date.now() };
     selected = d.name;
-    updateSelectionCard(d);
   }
 
   function draw() {
@@ -231,7 +255,13 @@ function mount(container) {
       .style('stroke', '#fff').style('stroke-width', d => d.name === selected ? 2.2 : 1.4)
       .attr('role', 'button').attr('tabindex', 0)
       .attr('aria-label', d => `${d.name}: ${d.detail}`)
-      .on('click', (event, d) => { lastInteraction = Date.now(); focusIdx = activity.findIndex(a => a.name === d.name); beginTravelTo(d); });
+      .on('click', (event, d) => {
+        lastInteraction = Date.now();
+        focusIdx = activity.findIndex(a => a.name === d.name);
+        beginTravelTo(d);
+        const [x, y] = d3.pointer(event, container);
+        showTip(x, y, d);
+      });
 
     if (!activityReady) {
       svg.append('text').attr('class', 'globe-loading-label').attr('x', w / 2).attr('y', h - 14).attr('text-anchor', 'middle').text('Running the first live search…');
@@ -242,7 +272,7 @@ function mount(container) {
 
   container._globeRedraw = draw;
 
-  svg.call(d3.drag().on('start', () => { dragging = true; lastInteraction = Date.now(); }).on('drag', event => { rotation[0] += event.dx * .38; rotation[1] = Math.max(-75, Math.min(75, rotation[1] - event.dy * .38)); draw(); }).on('end', () => { dragging = false; lastInteraction = Date.now(); }));
+  svg.call(d3.drag().on('start', () => { dragging = true; lastInteraction = Date.now(); hideTip(); }).on('drag', event => { rotation[0] += event.dx * .38; rotation[1] = Math.max(-75, Math.min(75, rotation[1] - event.dy * .38)); draw(); }).on('end', () => { dragging = false; lastInteraction = Date.now(); }));
   new ResizeObserver(draw).observe(container);
 
   // Instead of spinning continuously, the globe rests on the current point,
@@ -269,6 +299,7 @@ function mount(container) {
     if (activity.length) {
       focusIdx = (focusIdx + 1) % activity.length;
       beginTravelTo(activity[focusIdx]);
+      hideTip();
     } else {
       // No data yet — gentle fallback spin instead of sitting still.
       rotation[0] += .035;
