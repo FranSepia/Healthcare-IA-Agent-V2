@@ -237,4 +237,15 @@ async function evaluateOpportunity(opp, criteria) {
   return { ...evaluation, fitTier, reviewFlags, knockedOut: false, usedGemini };
 }
 
-module.exports = { evaluateOpportunity, buildCoefficientPrompt, runKnockouts, parseBudgetNumber };
+function buildCopilotPrompt(question, context) {
+  return `You are Aceso Copilot, a business-development analyst assistant embedded in Aceso Global's health-systems consulting opportunity dashboard. Answer the user's question using ONLY the data below — never invent specific numbers, organization names, countries or opportunities that aren't present in it. If the data doesn't contain what's needed to answer, say so plainly instead of guessing. Some of the "pipeline" data is explicitly marked as illustrative example data, not real — say so if the question is about it. Keep the answer to 2-4 sentences, concise and in a helpful analyst tone, plain text (no markdown).
+
+DASHBOARD DATA (JSON):
+${JSON.stringify(context).slice(0, 6000)}
+
+QUESTION: ${question}
+
+Return ONLY this JSON shape (no prose, no markdown fences): {"answer": "<your answer>"}`;
+}
+
+module.exports = { evaluateOpportunity, buildCoefficientPrompt, buildCopilotPrompt, runKnockouts, parseBudgetNumber };

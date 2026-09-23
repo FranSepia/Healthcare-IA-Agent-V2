@@ -9,9 +9,9 @@ const { searchCoefficientGiving } = require('./connectors/coefficientGiving');
 const { searchUnitaid } = require('./connectors/unitaid');
 const { searchUndp } = require('./connectors/undp');
 const { searchUngm } = require('./connectors/ungm');
-const { evaluateOpportunity } = require('./lib/scoring');
+const { evaluateOpportunity, buildCopilotPrompt } = require('./lib/scoring');
 const { dedupe } = require('./lib/dedupe');
-const { hasGeminiKey } = require('./lib/gemini');
+const { hasGeminiKey, callGemini } = require('./lib/gemini');
 const { closeBrowser } = require('./lib/browser');
 const { hasFirebaseConfig } = require('./lib/firebase');
 const { saveSearch, listSearches, getSearchById, getLatestSearch } = require('./lib/searchHistory');
@@ -41,6 +41,24 @@ function statusForTier(tier) {
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, geminiConfigured: hasGeminiKey() });
+});
+
+// Aceso Copilot — answers a free-text question against a compact summary of
+// the current dashboard data the frontend sends along. Shares the same
+// throttled Gemini queue as search scoring, so it can queue up behind a
+// search that's still running.
+app.post('/api/copilot', async (req, res) => {
+  const question = (req.body?.question || '').trim();
+  if (!question) return res.status(400).json({ error: 'Question is required.' });
+  if (!hasGeminiKey()) return res.json({ answer: null, error: 'Gemini is not configured, so Copilot cannot answer right now.' });
+  try {
+    const context = req.body?.context || {};
+    const raw = await callGemini(buildCopilotPrompt(question, context), { timeoutMs: 30000 });
+    res.json({ answer: raw.answer || "I couldn't come up with an answer for that." });
+  } catch (err) {
+    console.error(`[copilot] failed: ${err.message}`);
+    res.status(500).json({ error: `Copilot couldn't answer right now: ${err.message}` });
+  }
 });
 
 app.post('/api/search', async (req, res) => {

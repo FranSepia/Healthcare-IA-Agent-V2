@@ -125,16 +125,56 @@
     const potentialValue=records.reduce((sum,o)=>{const match=/\$([0-9.]+)\s?(million|M|thousand|K)\b/i.exec(o.value||'');if(!match)return sum;const unit=match[2].toLowerCase();const mult=unit==='million'||unit==='m'?1e6:unit==='thousand'||unit==='k'?1e3:1;return sum+Number(match[1])*mult},0);
     const fmtValue=n=>n>=1e6?`$${(n/1e6).toFixed(1)}M`:n>=1e3?`$${Math.round(n/1e3)}K`:`$${n}`;
     const updatedAt=new Date().toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'});
-    view.innerHTML=`<section class="dashboard-title-row"><div><p class="eyebrow">BUSINESS DEVELOPMENT INTELLIGENCE</p><h1>Global Health Opportunities Dashboard</h1><p>Computed live from the current search results.</p></div><div><small>Last updated <b>${updatedAt}</b></small></div></section><section class="executive-kpis">${[['◎','OPPORTUNITIES IDENTIFIED',String(records.length),'from this search'],['▤','RELEVANT',String(relevantCount),'passed all screening rules'],['✕','DISCARDED',String(discardedCount),'excluded with a traceable reason'],['◉','POTENTIAL VALUE',fmtValue(potentialValue),'sum of published budgets']].map(x=>`<article><i>${x[0]}</i><span><small>${x[1]}</small><b>${x[2]}</b><p>${x[3]}</p></span></article>`).join('')}</section><section class="dashboard-detail-grid single"><aside class="dashboard-copilot"><p class="eyebrow">✦ &nbsp; ACESO COPILOT</p><h2>Ask anything about global health opportunities.</h2>${['Which regions have the most opportunities?','Show upcoming deadlines this quarter','What are our top sources by value?'].map(x=>`<button>${x}<b>→</b></button>`).join('')}<label><input placeholder="Ask a question..."><button>→</button></label></aside></section>`;
+    view.innerHTML=`<section class="dashboard-title-row"><div><p class="eyebrow">BUSINESS DEVELOPMENT INTELLIGENCE</p><h1>Global Health Opportunities Dashboard</h1><p>Computed live from the current search results.</p></div><div><small>Last updated <b>${updatedAt}</b></small></div></section><section class="executive-kpis">${[['◎','OPPORTUNITIES IDENTIFIED',String(records.length),'from this search'],['▤','RELEVANT',String(relevantCount),'passed all screening rules'],['✕','DISCARDED',String(discardedCount),'excluded with a traceable reason'],['◉','POTENTIAL VALUE',fmtValue(potentialValue),'sum of published budgets']].map(x=>`<article><i>${x[0]}</i><span><small>${x[1]}</small><b>${x[2]}</b><p>${x[3]}</p></span></article>`).join('')}</section><section class="dashboard-detail-grid single"><aside class="dashboard-copilot"><p class="eyebrow">✦ &nbsp; ACESO COPILOT</p><h2>Ask anything about global health opportunities.</h2>${['Which regions have the most opportunities?','Show upcoming deadlines this quarter','What are our top sources by value?'].map(x=>`<button>${x}<b>→</b></button>`).join('')}<label><input placeholder="Ask a question..."><button>→</button></label><div class="copilot-answer" id="copilotAnswer" hidden></div></aside></section>`;
     const kpis=q('.executive-kpis',view);if(kpis)kpis.insertAdjacentHTML('afterend',`<section class="dashboard-world"><div class="world-orbit" data-interactive-globe><svg role="img" aria-label="Interactive globe showing Aceso opportunity activity. Drag to rotate and select an illuminated country."></svg><span class="globe-instruction">Drag to explore</span></div><div><p class="eyebrow">GLOBAL OPPORTUNITY RADAR</p><h2>Activity across <span data-globe-country-count>0</span> countries</h2><p>Live results from this search's six sources. Brighter points indicate a higher concentration of relevant notices.</p><div class="world-stats" data-globe-top-countries><span><b>0</b>Running the first search…</span></div></div></section>`);
     if(typeof window.refreshGlobeActivity==='function')window.refreshGlobeActivity();
     view.insertAdjacentHTML('beforeend',roiDashboardHTML());
     document.dispatchEvent(new CustomEvent('aceso:dashboard-ready'));
     const copilot=q('.dashboard-copilot',view),detailGrid=q('.dashboard-detail-grid',view);
     if(copilot&&detailGrid){copilot.classList.add('copilot-bar');detailGrid.after(copilot);copilot.insertAdjacentHTML('afterbegin','<div class="copilot-bar-intro"><p class="eyebrow">✦ &nbsp; ACESO COPILOT</p><strong>Your opportunity intelligence agent</strong></div>')}
-    qa('.dashboard-copilot>button').forEach(b=>b.onclick=()=>notify('Copilot insight prepared from the current dashboard.'));
     qa('.dashboard-feature-grid header button,.dashboard-detail-grid header button',view).forEach(b=>b.onclick=()=>notify(`${b.textContent.replace('→','').trim()} opened.`));
-    const send=q('.dashboard-copilot label button',view);if(send)send.onclick=()=>{const input=q('.dashboard-copilot input',view);notify(input.value.trim()?`Copilot is analyzing: ${input.value.trim()}`:'Type a question for Aceso Copilot.')};
+    bindCopilot(view);
+  }
+
+  function buildCopilotContext(){
+    const all=typeof records!=='undefined'?records:(typeof opportunities!=='undefined'?opportunities:[]);
+    const discardedList=typeof discarded!=='undefined'?discarded:[];
+    const bySource={},byRegion={},byPillar={};
+    all.forEach(o=>{if(o.source)bySource[o.source]=(bySource[o.source]||0)+1;if(o.country)byRegion[o.country]=(byRegion[o.country]||0)+1;if(o.pillar)byPillar[o.pillar]=(byPillar[o.pillar]||0)+1});
+    const topOpportunities=all.slice().sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,10).map(o=>({title:o.title,org:o.org,country:o.country,score:o.score,value:o.value,due:o.due,pillar:o.pillar}));
+    const pipeline=typeof window.pipelineStats==='function'?window.pipelineStats():null;
+    return {
+      totalOpportunitiesFound: all.length+discardedList.length,
+      relevantOpportunities: all.length,
+      discardedCount: discardedList.length,
+      byResultsSource: bySource, byCountry: byRegion, byTheme: byPillar,
+      topOpportunitiesByFit: topOpportunities,
+      examplePipeline: pipeline ? { note: 'This is illustrative example data for demos, not a real live pipeline.', stageOrder: pipeline.stages, stageCounts: pipeline.counts, totalPipelineValue: pipeline.totalValue } : null
+    };
+  }
+
+  async function askCopilot(question, view){
+    question=(question||'').trim();
+    const scope=view||document;
+    const answerBox=q('#copilotAnswer',scope);
+    if(!question){ if(answerBox){answerBox.hidden=false;answerBox.innerHTML='<p class="copilot-note">Type a question for Aceso Copilot.</p>'} return; }
+    const buttons=qa('.dashboard-copilot button',scope), input=q('.dashboard-copilot input',scope);
+    buttons.forEach(b=>b.disabled=true); if(input)input.disabled=true;
+    if(answerBox){answerBox.hidden=false;answerBox.innerHTML='<p class="copilot-note">Thinking… this shares Gemini\'s rate limit with search scoring, so it can take a bit if a search is running.</p>'}
+    try{
+      const res=await fetch('/api/copilot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,context:buildCopilotContext()})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok||data.error){ if(answerBox)answerBox.innerHTML=`<p class="copilot-note">${escapeHtml(data.error||`HTTP ${res.status}`)}</p>`; }
+      else if(answerBox){ answerBox.innerHTML=`<p class="copilot-q">${escapeHtml(question)}</p><p class="copilot-a">${escapeHtml(data.answer)}</p>`; }
+    }catch(err){ if(answerBox)answerBox.innerHTML=`<p class="copilot-note">Copilot request failed: ${escapeHtml(err.message)}</p>`; }
+    finally{ buttons.forEach(b=>b.disabled=false); if(input)input.disabled=false; }
+  }
+
+  function bindCopilot(view){
+    qa('.dashboard-copilot>button',view).forEach(b=>b.onclick=()=>askCopilot(b.textContent.replace('→','').trim(),view));
+    const input=q('.dashboard-copilot input',view), send=q('.dashboard-copilot label button',view);
+    if(send)send.onclick=()=>askCopilot(input?.value,view);
+    if(input)input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();askCopilot(input.value,view)}};
   }
 
   const priorShow=window.showView;
