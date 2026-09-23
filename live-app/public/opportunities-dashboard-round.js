@@ -125,7 +125,7 @@
     const potentialValue=records.reduce((sum,o)=>{const match=/\$([0-9.]+)\s?(million|M|thousand|K)\b/i.exec(o.value||'');if(!match)return sum;const unit=match[2].toLowerCase();const mult=unit==='million'||unit==='m'?1e6:unit==='thousand'||unit==='k'?1e3:1;return sum+Number(match[1])*mult},0);
     const fmtValue=n=>n>=1e6?`$${(n/1e6).toFixed(1)}M`:n>=1e3?`$${Math.round(n/1e3)}K`:`$${n}`;
     const updatedAt=new Date().toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'});
-    view.innerHTML=`<section class="dashboard-title-row"><div><p class="eyebrow">BUSINESS DEVELOPMENT INTELLIGENCE</p><h1>Global Health Opportunities Dashboard</h1><p>Computed live from the current search results.</p></div><div><small>Last updated <b>${updatedAt}</b></small></div></section><section class="executive-kpis">${[['◎','OPPORTUNITIES IDENTIFIED',String(records.length),'from this search'],['▤','RELEVANT',String(relevantCount),'passed all screening rules'],['✕','DISCARDED',String(discardedCount),'excluded with a traceable reason'],['◉','POTENTIAL VALUE',fmtValue(potentialValue),'sum of published budgets']].map(x=>`<article><i>${x[0]}</i><span><small>${x[1]}</small><b>${x[2]}</b><p>${x[3]}</p></span></article>`).join('')}</section><section class="dashboard-detail-grid single"><aside class="dashboard-copilot"><p class="eyebrow">✦ &nbsp; ACESO COPILOT</p><h2>Ask anything about global health opportunities.</h2>${['Which regions have the most opportunities?','Show upcoming deadlines this quarter','What are our top sources by value?'].map(x=>`<button>${x}<b>→</b></button>`).join('')}<label><input placeholder="Ask a question..."><button>→</button></label><div class="copilot-answer" id="copilotAnswer" hidden></div></aside></section>`;
+    view.innerHTML=`<section class="dashboard-title-row"><div><p class="eyebrow">BUSINESS DEVELOPMENT INTELLIGENCE</p><h1>Global Health Opportunities Dashboard</h1><p>Computed live from the current search results.</p></div><div><small>Last updated <b>${updatedAt}</b></small></div></section><section class="executive-kpis">${[['◎','OPPORTUNITIES IDENTIFIED',String(records.length),'from this search'],['▤','RELEVANT',String(relevantCount),'passed all screening rules'],['✕','DISCARDED',String(discardedCount),'excluded with a traceable reason'],['◉','POTENTIAL VALUE',fmtValue(potentialValue),'sum of published budgets']].map(x=>`<article><i>${x[0]}</i><span><small>${x[1]}</small><b>${x[2]}</b><p>${x[3]}</p></span></article>`).join('')}</section><section class="dashboard-detail-grid single"><aside class="dashboard-copilot"><p class="eyebrow">✦ &nbsp; ACESO COPILOT</p><h2>Ask anything about global health opportunities.</h2>${['Which regions have the most opportunities?','Show upcoming deadlines this quarter','What are our top sources by value?'].map(x=>`<button>${x}<b>→</b></button>`).join('')}<label><input placeholder="Ask a question..."><button>→</button></label><div class="copilot-answer" hidden></div></aside></section>`;
     const kpis=q('.executive-kpis',view);if(kpis)kpis.insertAdjacentHTML('afterend',`<section class="dashboard-world"><div class="world-orbit" data-interactive-globe><svg role="img" aria-label="Interactive globe showing Aceso opportunity activity. Drag to rotate and select an illuminated country."></svg><span class="globe-instruction">Drag to explore</span></div><div><p class="eyebrow">GLOBAL OPPORTUNITY RADAR</p><h2>Activity across <span data-globe-country-count>0</span> countries</h2><p>Live results from this search's six sources. Brighter points indicate a higher concentration of relevant notices.</p><div class="world-stats" data-globe-top-countries><span><b>0</b>Running the first search…</span></div></div></section>`);
     if(typeof window.refreshGlobeActivity==='function')window.refreshGlobeActivity();
     view.insertAdjacentHTML('beforeend',roiDashboardHTML());
@@ -156,7 +156,7 @@
   async function askCopilot(question, view){
     question=(question||'').trim();
     const scope=view||document;
-    const answerBox=q('#copilotAnswer',scope);
+    const answerBox=q('.copilot-answer',scope);
     if(!question){ if(answerBox){answerBox.hidden=false;answerBox.innerHTML='<p class="copilot-note">Type a question for Aceso Copilot.</p>'} return; }
     const buttons=qa('.dashboard-copilot button',scope), input=q('.dashboard-copilot input',scope);
     buttons.forEach(b=>b.disabled=true); if(input)input.disabled=true;
@@ -177,9 +177,32 @@
     if(input)input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();askCopilot(input.value,view)}};
   }
 
+  function installGlobalCopilot(){
+    if(q('#globalCopilotDock'))return;
+    const dock=document.createElement('div');
+    dock.id='globalCopilotDock';
+    dock.className='global-copilot-dock';
+    dock.innerHTML=`<div class="dashboard-copilot copilot-float" id="globalCopilotPanel" hidden><p class="eyebrow">✦ &nbsp; ACESO COPILOT</p><h2>Ask anything about global health opportunities.</h2>${['Which regions have the most opportunities?','Show upcoming deadlines this quarter','What are our top sources by value?'].map(x=>`<button type="button">${x}<b>→</b></button>`).join('')}<label><input placeholder="Ask a question..."><button type="button">→</button></label><div class="copilot-answer" hidden></div></div><button type="button" class="copilot-launcher" id="copilotLauncher" aria-expanded="false" aria-controls="globalCopilotPanel">✦ <span>Aceso Copilot</span></button>`;
+    document.body.appendChild(dock);
+    const panel=q('#globalCopilotPanel',dock),launcher=q('#copilotLauncher',dock);
+    const setOpen=open=>{
+      panel.hidden=!open;
+      launcher.setAttribute('aria-expanded',String(open));
+      launcher.innerHTML=open?'✕ <span>Close</span>':'✦ <span>Aceso Copilot</span>';
+      if(open)setTimeout(()=>q('input',panel)?.focus(),50);
+    };
+    launcher.onclick=()=>setOpen(panel.hidden);
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!panel.hidden)setOpen(false)});
+    // launcher.innerHTML changes on click, which can detach the exact node the
+    // click landed on before this listener runs — composedPath() reflects the
+    // event's original path, so it stays correct even after that mutation.
+    document.addEventListener('click',e=>{if(!panel.hidden&&!e.composedPath().includes(dock))setOpen(false)});
+    bindCopilot(panel);
+  }
+
   const priorShow=window.showView;
   window.showView=function(name){priorShow(name);if(name==='pipeline')setTimeout(installPipelineTools);if(name==='dashboard')rebuildDashboard()};
   qa('.navlinks button').forEach(b=>b.onclick=()=>window.showView(b.dataset.view));
-  mergeOpportunityNavigation();installTodayTools();reliableSelection();installPipelineTools();installDrawer();rebuildDashboard();
+  mergeOpportunityNavigation();installTodayTools();reliableSelection();installPipelineTools();installDrawer();rebuildDashboard();installGlobalCopilot();
   document.addEventListener('click',e=>{const link=e.target.closest('a[href="#"]');if(!link)return;e.preventDefault();notify('The supporting source would open here in the connected pilot.')});
 })();
