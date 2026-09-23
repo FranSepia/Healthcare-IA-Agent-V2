@@ -139,17 +139,25 @@
   function buildCopilotContext(){
     const all=typeof records!=='undefined'?records:(typeof opportunities!=='undefined'?opportunities:[]);
     const discardedList=typeof discarded!=='undefined'?discarded:[];
-    const bySource={},byRegion={},byPillar={};
-    all.forEach(o=>{if(o.source)bySource[o.source]=(bySource[o.source]||0)+1;if(o.country)byRegion[o.country]=(byRegion[o.country]||0)+1;if(o.pillar)byPillar[o.pillar]=(byPillar[o.pillar]||0)+1});
-    const topOpportunities=all.slice().sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,10).map(o=>({title:o.title,org:o.org,country:o.country,score:o.score,value:o.value,due:o.due,pillar:o.pillar}));
+    const today=new Date().toISOString().slice(0,10);
+    const toISO=text=>{const t=Date.parse(text||'');return Number.isNaN(t)?null:new Date(t).toISOString().slice(0,10)};
+    const tally=(list,key)=>list.reduce((acc,x)=>{const k=key(x);if(k)acc[k]=(acc[k]||0)+1;return acc},{});
+    const opps=all.slice().sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,60).map(o=>({title:o.title,org:o.org,country:o.country,source:o.source,theme:o.pillar,fitScore:o.score,value:o.value,deadlineAsPublished:o.due,deadlineISO:toISO(o.due),agentStatus:o.status,reviewState:o.state,rfpStatus:o.rfpStatus||undefined}));
+    const upcomingDeadlines=opps.filter(o=>o.deadlineISO&&o.deadlineISO>=today).sort((a,b)=>a.deadlineISO.localeCompare(b.deadlineISO)).map(o=>({title:o.title,org:o.org,deadlineISO:o.deadlineISO,fitScore:o.fitScore,agentStatus:o.agentStatus}));
+    const deadlineUnclear=opps.filter(o=>!o.deadlineISO).map(o=>({title:o.title,deadlineAsPublished:o.deadlineAsPublished}));
     const pipeline=typeof window.pipelineStats==='function'?window.pipelineStats():null;
     return {
+      today,
       totalOpportunitiesFound: all.length+discardedList.length,
       relevantOpportunities: all.length,
       discardedCount: discardedList.length,
-      byResultsSource: bySource, byCountry: byRegion, byTheme: byPillar,
-      topOpportunitiesByFit: topOpportunities,
-      examplePipeline: pipeline ? { note: 'This is illustrative example data for demos, not a real live pipeline.', stageOrder: pipeline.stages, stageCounts: pipeline.counts, totalPipelineValue: pipeline.totalValue } : null
+      discardReasons: tally(discardedList,d=>d&&d[3]),
+      byResultsSource: tally(all,o=>o.source), byCountry: tally(all,o=>o.country), byTheme: tally(all,o=>o.pillar),
+      agentStatusCounts: tally(all,o=>o.status),
+      allRelevantOpportunities: opps,
+      upcomingDeadlinesSoonestFirst: upcomingDeadlines,
+      opportunitiesWithoutClearDeadline: deadlineUnclear,
+      examplePipeline: pipeline ? { note: 'This is illustrative example data for demos, not a real live pipeline.', stageOrder: pipeline.stages, stageCounts: pipeline.counts, totalPipelineValue: pipeline.fmtValue(pipeline.totalValue), proposals: pipeline.items } : null
     };
   }
 

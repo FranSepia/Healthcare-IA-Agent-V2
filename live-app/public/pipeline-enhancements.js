@@ -48,7 +48,8 @@
     const counts = stages.map(s => stageData[s].length);
     const totalValue = stages.reduce((sum, s) => sum + stageData[s].reduce((a, x) => a + x.value, 0), 0);
     const awardedValue = stageData.Awarded.reduce((a, x) => a + x.value, 0);
-    return { stages, counts, totalValue, awardedValue, fmtValue };
+    const items = stages.flatMap(s => stageData[s].map(x => ({ stage: s, title: x.title, funder: x.funder, country: x.country, owner: x.owner, progressPct: x.progress, nextAction: x.next, date: x.date, fit: x.fit, value: fmtValue(x.value) })));
+    return { stages, counts, totalValue, awardedValue, fmtValue, items };
   }
   window.pipelineStats = pipelineStats;
 
