@@ -55,6 +55,7 @@
   const empty = label => `<div class="chart-empty">Not enough data yet for ${label} — run a search with more results.</div>`;
 
   function liveData() {
+    if (typeof window.dashboardScope === 'function') { const s = window.dashboardScope(); return { opps: s.opps, excluded: s.excluded }; }
     const opps = (typeof window.activeOpportunities === 'function' ? window.activeOpportunities() : (typeof opportunities !== 'undefined' ? opportunities : [])) || [];
     const excluded = (typeof discarded !== 'undefined' ? discarded : []) || [];
     return { opps, excluded };
@@ -438,6 +439,7 @@
 
   // Mounting and re-rendering are driven by dashboard-layout.js.
   window.dashboardInsightCards = insightCards;
+  window.acesoParseDate = parseDate;
   window.renderAnalystHours = renderHours;
   window.setInsightTrendMode = mode => { trendMode = mode; };
   if (window.AcesoAnalystTime) window.AcesoAnalystTime.onChange(() => renderHours(false));
