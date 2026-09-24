@@ -214,7 +214,11 @@
     const reached = pipeline.counts.map((_, i) => pipeline.counts.slice(i).reduce((a, b) => a + b, 0));
     const steps = pipeline.stages.slice(1).map((stage, i) => ({ name: `${pipeline.stages[i]} → ${stage}`, from: reached[i], to: reached[i + 1], pct: reached[i] ? Math.round(reached[i + 1] / reached[i] * 100) : 0 }));
     const best = steps.reduce((a, b) => (b.pct > a.pct ? b : a), steps[0]);
-    return { steps, best };
+    // Headline: share of qualified pursuits that reached proposal production,
+    // however many review stages sit in between.
+    const p = pipeline.stages.indexOf('Proposal');
+    const toProposal = p > 0 && reached[0] ? Math.round(reached[p] / reached[0] * 100) : steps[0].pct;
+    return { steps, best, toProposal };
   }
   function decisionQualityCard() {
     const d = decisionQualityData();
@@ -222,7 +226,7 @@
     if (!d) return { ...card, body: empty('pursuit decision quality') };
     const { steps, best } = d;
     return { ...card,
-      body: `<div class="dq-headline"><b>${steps[0].pct}%</b><span><strong>of qualified pursuits</strong>reach proposal production</span></div>
+      body: `<div class="dq-headline"><b>${d.toProposal}%</b><span><strong>of qualified pursuits</strong>reach proposal production</span></div>
       <div class="dq-steps">${steps.map(s => `<div tabindex="0" title="${s.to} of ${s.from}"><span>${esc(s.name)}</span><i><em style="width:${s.pct}%"></em></i><b>${s.pct}%</b></div>`).join('')}</div>`,
       foot: `<b>Strongest handoff:</b> ${esc(best.name)} converts ${best.pct}% (${best.to} of ${best.from}).` };
   }
