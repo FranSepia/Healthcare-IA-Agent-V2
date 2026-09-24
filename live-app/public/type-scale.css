@@ -1,5 +1,5 @@
 /* ======================================================================
-   Type scale — three sizes for the whole app. Loaded last on purpose so it
+   Type system — three sizes, two families, two weights for the whole app. Loaded last on purpose so it
    overrides the many per-screen sizes that accumulated over time.
 
    S  13px  everything by default: body copy, labels, buttons, tables,
@@ -47,6 +47,25 @@
 
 /* L — page titles and the home headline figure */
 :is(h1,h1 *,.pw-hero h2,#_ts#_ts#_ts){font-size:var(--fs-l)!important}
+
+/* ---- Families and weights -------------------------------------------------
+   Two families, two weights:
+   • Titles (h1, h2, h3): Libre Caslon Display, regular.
+   • Everything else, including every figure: DM Sans, 400 or 600.
+   Only DM Sans 400 and 600 are loaded (index.html), so any older rule asking
+   for 500 renders at 400 and 700–900 render at 600 — one bold, one regular. */
+:is(body,body *,#_ts#_ts#_ts){font-family:var(--sans)!important}
+:is(h1,h1 *,h2,h2 *,h3,h3 *,#_ts#_ts#_ts){font-family:var(--serif)!important;font-weight:400!important;letter-spacing:0!important;text-transform:none!important}
+/* Figures stay in the body family so numbers look the same on every screen. */
+:is(
+  h1 .today-nine,
+  .today-impact b,.fit-box strong,.unified-fit b,.drawer-fit b,.hero-score b,
+  .pw-readiness b,.pw-compliance-score b,#pipelineMetrics b,.stage-score,
+  .executive-kpis b,.financial-preview b,.world-stats b,.hours-kpis b,
+  .insight-foot b,.dq-headline>b,.experience-intro>span>b,.talent-project-count>b,
+  .nb-source strong em,.simple-fig,
+  #_ts#_ts#_ts){font-family:var(--sans)!important;font-weight:600!important;letter-spacing:-.01em!important}
+svg text{font-family:var(--sans)!important}
 
 /* Donut and ring SVGs render at their drawing size, so their text is
    exactly S / M on screen rather than scaled down. */
