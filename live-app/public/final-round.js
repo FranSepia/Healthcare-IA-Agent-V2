@@ -2,122 +2,190 @@
   const q=(s,r=document)=>r.querySelector(s), qa=(s,r=document)=>[...r.querySelectorAll(s)];
   const say=(message)=>typeof toast==='function'?toast(message):null;
 
+  // Mirrors lib/criteria.js — the backend applies exactly these lists, so
+  // switching a rule off here really stops it on the next search.
   const DEFAULT_CRITERIA_STATE={
     focusAreas:['Health Systems Strengthening','Pandemic Preparedness and Response','Research and Evaluation','Policy and Capacity Building','Hospital Systems Management','Health Financing','Social Health Insurance','Innovative Service Delivery','Private Sector Contracting','Healthcare Information Systems and Technology','Universal Health Coverage','Provider Payment Systems','Quality of Care','Healthcare Efficiency','Public-Private Partnerships','Program Sustainability and Donor Transition','One Health','Nutrition'],
     activities:['Advisory and consulting services','Research','Evaluation','Costing','Training and curriculum development','Capacity building','Strategic planning','Policy development','Program assessments','Service-delivery reform'],
     regions:['Indonesia','Southeast Asia','Latin America and the Caribbean','Priority countries in Africa (e.g. Tanzania)'],
     fundersMDB:['World Bank','IFC','ADB','IDB','IsDB','AfDB','AIIB'],
-    fundersPhilanthropic:['Philanthropic foundations (add specific names as confirmed)'],
+    fundersPhilanthropic:[],
     fundersGov:['European Commission','GIZ','BMZ','Italian Development Cooperation'],
     fundersUS:['CDC','U.S. Department of State'],
     budget:{min:200000,flagLarge:true},
     languages:{english:true,spanish:true,portuguese:true,frenchReview:true},
-    knockouts:['Restricted to individual consultants, not firms','Full-time in-country presence required','Local incorporation required','Eligibility restricted to a country/region that excludes Aceso','Education or experience requirements Aceso’s available senior team cannot satisfy','Requires hiring multiple senior external specialists','Work located in a conflict area','Travel to a U.S. Department of State Level 4 destination','Excessive focus on physical infrastructure','Incompatible language requirements','Clearly insufficient budget','Procurement plan with no applicable opportunity for an international consulting firm','Scope of work too vague to evaluate','Opportunity already closed'].map((label,i)=>({id:'ko'+i,label,enabled:true})),
-    reviewFlags:['Tight submission deadline','Missing or incomplete TOR/RFP','Budget not published','Potentially wired opportunity','Unfamiliar or inconsistent funder','Additional consultant required','Unclear eligibility','Travel required','Limited information available','High price weighting in the evaluation','Interesting topic or country despite a low budget'].map((label,i)=>({id:'rf'+i,label,enabled:true})),
-    mnch:'human_review'
+    knockouts:['Restricted to individual consultants, not firms','Full-time in-country presence required','Local incorporation required','Eligibility restricted to a country/region that excludes Aceso','Education or experience requirements Aceso’s available senior team cannot satisfy','Requires hiring multiple senior external specialists','Work located in a conflict area','Travel to a U.S. Department of State Level 4 destination','Excessive focus on physical infrastructure','Incompatible language requirements','Procurement plan with no applicable opportunity for an international consulting firm','Scope of work too vague to evaluate'].map((label,i)=>({id:'ko'+i,label,enabled:true})),
+    reviewFlags:['Tight submission deadline','Missing or incomplete TOR/RFP','Budget not published','Potentially wired opportunity','Unfamiliar or inconsistent funder','Additional consultant required','Unclear eligibility','Travel required','Limited information available','High price weighting in the evaluation','Interesting topic or country despite a low budget'].map((label,i)=>({id:'rf'+i,label,enabled:true}))
   };
   const CRITERIA_STATE_KEY='aceso_criteria_state_v2';
+  const LEGACY_LABELS=['Opportunity already closed','Clearly insufficient budget'];
   function cloneDefaults(){return JSON.parse(JSON.stringify(DEFAULT_CRITERIA_STATE))}
-  function loadCriteriaState(){try{const raw=localStorage.getItem(CRITERIA_STATE_KEY);return raw?Object.assign(cloneDefaults(),JSON.parse(raw)):cloneDefaults()}catch(e){return cloneDefaults()}}
+  function loadCriteriaState(){
+    let state;
+    try{const raw=localStorage.getItem(CRITERIA_STATE_KEY);state=raw?Object.assign(cloneDefaults(),JSON.parse(raw)):cloneDefaults()}catch(e){state=cloneDefaults()}
+    // Older saved states listed rules that are now enforced in code (closed
+    // deadlines, the budget minimum) or held a placeholder funder name.
+    ['knockouts','reviewFlags'].forEach(k=>{if(Array.isArray(state[k]))state[k]=state[k].filter(x=>!LEGACY_LABELS.includes(x&&x.label))});
+    state.fundersPhilanthropic=(state.fundersPhilanthropic||[]).filter(x=>!/add specific names/i.test(x));
+    delete state.mnch;
+    return state;
+  }
   function saveCriteriaState(){try{localStorage.setItem(CRITERIA_STATE_KEY,JSON.stringify(criteriaState))}catch(e){}}
   let criteriaState=loadCriteriaState();
+  saveCriteriaState();
 
-  const criteria=[
-    {key:'Focus Areas',sub:'Thematic fit',type:'chips',stateKey:'focusAreas',settingsLabel:'Current focus areas',title:'Which thematic areas define a strategic fit?',purpose:'The topics Aceso is positioned to deliver against today — used for LLM-based thematic scoring, never a simple keyword match.',agent:[['Read the full scope','Uses objectives, deliverables and eligibility — not the title alone.'],['Match against these areas','Compares the scope with the list on the left, plus Aceso’s prior proposals and delivered work.'],['Score relevance','Separates core fit, adjacent fit and out-of-scope work.']],human:[['Maintain this list','Adds or removes focus areas as Aceso’s strategy shifts.'],['Review edge cases','Decides when an adjacent topic is strategically worth pursuing.']],rule:'A keyword match never overrides the actual deliverables or applicant type — the list on the left is guidance for the LLM, not a rigid filter.',example:'A tender mentions “health systems” but only purchases equipment. The agent classifies the deliverables as procurement, not advisory work, regardless of the keyword match.'},
-    {key:'Activities',sub:'Service fit',type:'chips',stateKey:'activities',settingsLabel:'Relevant activities',title:'What kind of work does Aceso actually deliver?',purpose:'The service types Aceso can staff and deliver — used to separate advisory assignments from work outside the service model.',agent:[['Extract activities','Reads the requested deliverables and activities from the scope of work.'],['Match against this list','Confirms the assignment is advisory, research or capacity-building work, not goods or construction.']],human:[['Maintain this list','Adds or removes activity types as Aceso’s service offering evolves.']],rule:'An opportunity whose activities fall entirely outside this list is a strong candidate for exclusion, even with a strong thematic match.',example:'A UHC-themed opportunity turns out to be a hospital-equipment purchase. Strong thematic fit, zero activity fit — the agent flags the mismatch instead of recommending it.'},
-    {key:'Regions',sub:'Geographic priority',type:'chips',stateKey:'regions',settingsLabel:'Priority regions',title:'Where is Aceso prioritizing delivery right now?',purpose:'The countries and regions Aceso wants to prioritize this cycle. This list is intentionally short — Aceso has not yet provided a complete country list.',agent:[['Extract geography','Reads the country, region and multi-country scope from the notice.'],['Weigh regional priority','Treats a match against this list as a positive signal, not a hard requirement — opportunities outside it still reach scoring.']],human:[['Complete this list','Add countries and regions as Aceso confirms them — this list is a starting point, not the final scope.']],rule:'Being outside the priority-region list is a scoring signal, never an automatic knock-out — only the eligibility red flags (see Quick Knock-outs) can knock an opportunity out entirely.',example:'A strong-fit opportunity in Kenya is outside today’s priority list. It still reaches scoring, just without the regional-priority bonus that a Tanzania opportunity would get.'},
-    {key:'Funders',sub:'Funder fit',type:'chip-groups',groups:[{key:'fundersMDB',label:'Multilateral development banks'},{key:'fundersPhilanthropic',label:'Philanthropic foundations'},{key:'fundersGov',label:'Government aid agencies'},{key:'fundersUS',label:'United States government agencies'}],settingsLabel:'Preferred funders',title:'Which funders does Aceso prioritize?',purpose:'Funder relevance is one of the scoring factors — a notice from a listed funder starts with a positive signal.',agent:[['Extract the funder','Reads the issuing organization from the notice.'],['Match against these groups','A listed funder is a positive signal; an unlisted or inconsistent funder is a review flag, not a knock-out.']],human:[['Maintain these lists','Adds or removes funders in each group as relationships develop.']],rule:'An unfamiliar or inconsistent funder is a review flag (see Review Flags), never an automatic exclusion.',example:'A notice from a funder not on any list still reaches scoring; it is flagged “Unfamiliar or inconsistent funder” so the analyst gives it a second look before deciding.'},
-    {key:'Budget',sub:'Value threshold',type:'budget',settingsLabel:'Current threshold',title:'Is the opportunity within Aceso’s budget range?',purpose:'A minimum-value guide, not a hard wall — a human can always approve an exception below it.',agent:[['Capture the value','Extracts budget, currency and whether the amount is undisclosed.'],['Apply the threshold as guidance','Below the minimum is a review flag, not an automatic rejection.'],['Flag very large opportunities too','A multimillion-dollar opportunity may exceed Aceso’s current operational capacity — it gets flagged for review just like an under-threshold one.']],human:[['Set the threshold','Adjusts the preferred minimum as Aceso’s capacity and strategy change.'],['Approve exceptions','Clears a below-threshold or very-large opportunity for pursuit when it’s worth it.']],rule:'The preferred minimum is a review threshold, not an automatic rejection. An undisclosed value means “needs review,” never automatic rejection either.',example:'A $150,000 opportunity falls under the preferred $200,000 minimum. It is flagged “Clearly insufficient budget” for a human to confirm — the agent never discards it outright.'},
-    {key:'Languages',sub:'Delivery language',type:'languages',settingsLabel:'Accepted languages',title:'Is the notice in a language Aceso can act on?',purpose:'English, Spanish and Portuguese are accepted outright. French needs a human. Anything else is usually a knock-out.',agent:[['Detect the language','Reads the notice language directly from the source record.'],['Accept English, Spanish, Portuguese','No extra review needed for these three.'],['Route French to a human','French is never auto-approved and never auto-rejected — it always needs a reviewer to confirm delivery capacity.']],human:[['Confirm delivery languages','Approves which languages the team can realistically deliver in this cycle.'],['Decide on French notices','Reviews each French notice individually — there is no automatic outcome for French yet.']],rule:'Any other exclusive-language requirement is normally low fit or disqualifying, at the reviewer’s judgment.',example:'A French-only EOI with a strong thematic fit still goes to human review — never straight to Recommended — because no one has confirmed French-language delivery capacity.'},
-    {key:'Quick Knock-outs',sub:'Hard exclusions',type:'checklist',stateKey:'knockouts',settingsLabel:'Active knock-out rules',title:'What gets an opportunity excluded outright?',purpose:'Fast, rule-based checks the agent runs before spending any real evaluation time on a notice.',agent:[['Scan for each active rule','Checks the notice against every enabled knock-out below.'],['Record the exact rule that failed','Every exclusion keeps the specific rule and the source passage, for audit.'],['Skip disabled rules','A rule unchecked here is not applied — it stays visible so a reviewer can re-enable it later.']],human:[['Turn rules on or off','Disables a knock-out that’s currently too aggressive, or adds a new one.'],['Recover exceptions','Returns a questionable exclusion to human review.']],rule:'Ante la duda, incluir: when a rule’s match is ambiguous, the opportunity goes to review, not straight to excluded.',example:'A notice requires “full-time in-country presence.” The agent excludes it under that rule and keeps the exact sentence on file in case a reviewer wants to recover it.'},
-    {key:'Review Flags',sub:'Non-disqualifying alerts',type:'checklist',stateKey:'reviewFlags',settingsLabel:'Active review flags',title:'What deserves a second look, without excluding the opportunity?',purpose:'Signals that change how carefully a human should read an opportunity, without ever knocking it out.',agent:[['Scan for each active flag','Checks the notice against every enabled flag below.'],['Attach flags, not exclusions','A flagged opportunity still reaches the pipeline — the flag just travels with it.'],['Allow several at once','An opportunity can carry more than one flag, e.g. both a tight deadline and an unpublished budget.']],human:[['Turn flags on or off','Disables a flag that’s currently too noisy, or adds a new one.'],['Read the flagged reason first','Uses the flag list to triage which opportunities need the closest read.']],rule:'A review flag never excludes an opportunity — it only asks a human to look twice before deciding.',example:'A high-fit opportunity has no published budget. It keeps its Recommended-track fit score and picks up a “Budget not published” flag instead of being penalized for it.'},
-    {key:'MNCH',sub:'Open question',type:'mnch',title:'How should maternal, newborn and child health opportunities be treated?',purpose:'MNCH shows up in Aceso’s documentation both as a priority topic and as a possible exclusion keyword — the two haven’t been reconciled yet.',agent:[['Never auto-reject MNCH','Until Aceso clarifies the rule, an MNCH-flagged opportunity is never knocked out automatically.'],['Always route to human review','Every MNCH opportunity is held for a reviewer, regardless of its fit score.']],human:[['Resolve the contradiction','Confirms whether MNCH should count as a Focus Area, an exclusion, or stay case-by-case.'],['Decide case by case, for now','Reviews each MNCH opportunity individually while the rule is unresolved.']],rule:'Human Review Required is the standing rule for MNCH until Aceso documents a final answer.',example:'A Networks of Care & MNCH Integration opportunity scores well on Service Delivery. It still routes to human review rather than Recommended, purely because of the unresolved MNCH question.'},
-    {key:'Timing',sub:'Deadline & capacity',title:'Can the team respond and deliver?',purpose:'Surface deadlines early enough for a quality pursuit and avoid commitments the team cannot staff.',settings:['31–90 days','3–6 months','Flag under 14 days','Capacity check'],agent:[['Calculate time','Counts working days and identifies clarification deadlines.'],['Assess complexity','Compares remaining time with required partners and documents.'],['Check capacity','Flags overlap with active proposals and delivery load.']],human:[['Confirm availability','Validates owner, reviewers and technical leads.'],['Make the trade-off','Chooses which pursuit receives capacity when deadlines collide.']],rule:'A short deadline is excluded only when the required preparation cannot reasonably be completed.',example:'Two proposals close in the same week. The agent shows the collision; Business Development assigns priority and ownership.'},
-    {key:'Decision',sub:'Human checkpoints',title:'When must a human decide?',purpose:'Keep every recommendation traceable while reserving pursuit, staffing and submission decisions for people.',settings:['Analyst review','BD recommendation','Finance check','Director approval'],agent:[['Prepare evidence','Shows source fields, fit, warnings and reusable experience.'],['Explain uncertainty','Labels missing, conflicting or assumption-based information.'],['Route the case','Assigns the next decision and preserves comments and history.']],human:[['Go / no-go','Approves pursuit or keeps the opportunity excluded.'],['Resolve ambiguity','Validates partners, budget and team.'],['Approve submission','Reviews the generated draft before it is sent.']],rule:'The agent recommends and documents. It never makes the final pursuit or submission decision — Aceso Global always keeps final approval.',example:'The agent prepares a proposal preview, but the analyst must review it and the director must authorize submission.'},
-    {key:'Sources',sub:'Intelligence feeds',type:'sources',settings:['Grants.gov — Simpler.Grants.gov REST API','DevelopmentAid — enterprise API / feed / export (pending confirmation)','Coefficient Giving — public RFP monitor','Priority: Global Health & Wellbeing Opportunities'],title:'Where does each opportunity come from, and how is it fetched?',purpose:'Three feeds validate every notice before it reaches the pipeline. The analyst only ever sees the source name — never the connection method or any credential.',agent:[['Grants.gov','Queries the official Simpler.Grants.gov REST API with Aceso’s criteria; the API key lives in a backend environment variable, never in this frontend.'],['DevelopmentAid','Prefers, in order: the enterprise API, an authorized data feed, a CSV/Excel export, automated processing of DevelopmentAid email alerts, or — as a temporary proof of concept only — authorized browser automation. No credential from any of these is ever stored in code, a document or this interface.'],['Coefficient Giving — monitor scope','Watches coefficientgiving.org/research-and-news/ and prioritizes coefficientgiving.org/funds/global-health-wellbeing-opportunities/; blogs, staff publications and general research are discarded — only requests for proposals are kept.'],['Coefficient Giving — field extraction','For every RFP kept, extracts title, objective, funding amount, eligibility, deadline, thematic area and the official link, then classifies it as Open RFP, Closed RFP, Informational Announcement or Potential Future Opportunity.']],human:[['Confirm DevelopmentAid credentials are still valid','And change the password — it was previously stored in plain text.'],['Confirm what the current membership permits','Enterprise API access, data feed, exports or alerts.'],['Confirm monitored Coefficient Giving pages','Approve the exact section(s) the agent should watch.'],['Authorize the pilot','Approve using all three sources together for the three-day validation.']],rule:'Only Open RFPs from Coefficient Giving enter the primary review queue. Potential Future Opportunities go to a separate watchlist, never the active pipeline.',example:'A Global Health & Wellbeing Opportunities post announces a future funding round with no submission process yet. The agent tags it “Potential Future Opportunity” and moves it to the watchlist instead of the review queue.',legend:[['rfp-open','Open RFP','Accepting proposals now — enters the primary review queue.'],['rfp-closed','Closed RFP','Submission window has passed — kept for reference, not pursuit.'],['rfp-info','Informational Announcement','Funder context or guidance — no submission process yet.'],['rfp-potential','Potential Future Opportunity','Signals a likely future round — goes to the watchlist, not the queue.']]}
+  const SECTIONS=[
+    {key:'How it decides',type:'flow'},
+    {key:'What we look for',type:'lists',groups:[['focusAreas','Focus areas'],['activities','Activities Aceso delivers']],
+      title:'What makes an opportunity a fit?',
+      purpose:'The topics and kinds of work Aceso delivers. The AI reads the whole notice, not just the title, and scores how well it matches these lists.',
+      uses:[['Reads the full notice','Objectives, deliverables and eligibility, not the title alone.'],['Scores the match','A core match scores high, adjacent work scores medium, anything outside these lists scores low.'],['Tags the main theme','The best-matching focus area becomes the theme tag shown on each opportunity.']],
+      example:'A tender mentions “health systems” but only buys equipment. The topic matches, the activity doesn’t, so it is excluded as goods procurement.'},
+    {key:'Where & who',type:'lists',groups:[['regions','Priority regions'],['fundersMDB','Development banks'],['fundersPhilanthropic','Foundations'],['fundersGov','Government aid agencies'],['fundersUS','U.S. government']],
+      title:'Where and with whom does Aceso want to work?',
+      purpose:'Priority regions and preferred funders raise the score. They are a bonus, never a requirement.',
+      uses:[['Finds the country and funder','Read directly from the notice.'],['Adds a bonus on a match','A listed region or funder pushes the fit score up.'],['Never excludes on its own','Places and funders not on these lists are still scored normally.']],
+      example:'A World Bank notice in Indonesia gets both bonuses. A strong CDC notice in Kenya is still scored normally, just without the regional bonus.'},
+    {key:'Exclude or flag',type:'rules'},
+    {key:'Sources & timing',type:'info'}
   ];
-  let criterion=0, owner='agent';
+  const SOURCES=[
+    ['grantsGov','Grants.gov','Official Grants.gov API'],
+    ['worldBank','World Bank','World Bank procurement API'],
+    ['coefficientGiving','Coefficient Giving','Public funding page · AI separates real RFPs from news'],
+    ['unitaid','Unitaid','Public consultancies & RFPs page'],
+    ['undp','UNDP','Public procurement notices page'],
+    ['ungm','UNGM','UN Global Marketplace · read with a headless browser']
+  ];
+  let criterion=0, lastSearch=null;
+  const esc=v=>typeof escapeHtml==='function'?escapeHtml(v):String(v);
 
-  function chipTag(key,i,v){return `<span class="chip"><span>${v}</span><button type="button" data-remove="${i}" data-key="${key}" aria-label="Remove ${v}">×</button></span>`}
-  function addForm(key,mode,placeholder){return `<form class="chip-add" data-key="${key}" data-mode="${mode}"><input type="text" placeholder="${placeholder}" required><button type="button">+ Add</button></form>`}
+  function chipTag(key,i,v){return `<span class="chip"><span>${esc(v)}</span><button type="button" data-remove="${i}" data-key="${key}" aria-label="Remove ${esc(v)}">×</button></span>`}
+  function addForm(key,mode,placeholder){return `<form class="chip-add" data-key="${key}" data-mode="${mode}"><input type="text" placeholder="${esc(placeholder)}" required><button type="button">+ Add</button></form>`}
+  function chipGroup(key,label){const arr=criteriaState[key]||[];return `<div class="chip-group"><h4>${label} <span>${arr.length}</span></h4><div class="chip-list">${arr.map((v,i)=>chipTag(key,i,v)).join('')}<form class="chip-add chip-add-inline" data-key="${key}" data-mode="chip"><input type="text" placeholder="+ Add" aria-label="Add to ${label}" required><button type="button" aria-label="Add">↵</button></form></div></div>`}
+  function checklist(key){const arr=criteriaState[key]||[];return `<div class="checklist-list compact">${arr.map((item,i)=>`<label class="checklist-item ${item.enabled?'':'off'}"><input type="checkbox" data-toggle="${i}" data-key="${key}" ${item.enabled?'checked':''}><span>${esc(item.label)}</span><button type="button" data-remove="${i}" data-key="${key}" aria-label="Remove">×</button></label>`).join('')}</div>${addForm(key,'item','Add a rule…')}`}
+  const fmtUSD=n=>n>=1e6?`$${(n/1e6).toFixed(n%1e6?1:0)}M`:`$${Math.round(n/1e3)}K`;
 
-  function settingsHTML(s){
-    if(s.type==='chips'){
-      const arr=criteriaState[s.stateKey]||[];
-      return `<div class="chip-list">${arr.map((v,i)=>chipTag(s.stateKey,i,v)).join('')}</div>${addForm(s.stateKey,'chip','Add another…')}`;
-    }
-    if(s.type==='chip-groups'){
-      return `<div class="chip-groups">${s.groups.map(g=>{const arr=criteriaState[g.key]||[];return `<div class="chip-group"><h4>${g.label}</h4><div class="chip-list">${arr.map((v,i)=>chipTag(g.key,i,v)).join('')}</div>${addForm(g.key,'chip','Add to '+g.label.toLowerCase()+'…')}</div>`}).join('')}</div>`;
-    }
-    if(s.type==='budget'){
-      const b=criteriaState.budget;
-      return `<div class="budget-editor"><label class="budget-min"><span>Preferred minimum budget (USD)</span><input type="number" id="budgetMinInput" value="${b.min}" step="10000" min="0"></label><label class="budget-flag"><input type="checkbox" id="budgetFlagLarge" ${b.flagLarge?'checked':''}><span>Also flag very large, multimillion-dollar opportunities for review — they may exceed Aceso’s operational capacity.</span></label></div>`;
-    }
-    if(s.type==='languages'){
-      const l=criteriaState.languages;
-      return `<div class="language-editor"><label><input type="checkbox" data-lang="english" ${l.english?'checked':''}><span>English — accepted</span></label><label><input type="checkbox" data-lang="spanish" ${l.spanish?'checked':''}><span>Spanish — accepted</span></label><label><input type="checkbox" data-lang="portuguese" ${l.portuguese?'checked':''}><span>Portuguese — accepted</span></label><label class="lang-french"><input type="checkbox" data-lang="frenchReview" ${l.frenchReview?'checked':''}><span>French — human review required</span></label></div>`;
-    }
-    if(s.type==='checklist'){
-      const arr=criteriaState[s.stateKey]||[];
-      return `<div class="checklist-list">${arr.map((item,i)=>`<label class="checklist-item ${item.enabled?'':'off'}"><input type="checkbox" data-toggle="${i}" data-key="${s.stateKey}" ${item.enabled?'checked':''}><span>${item.label}</span><button type="button" data-remove="${i}" data-key="${s.stateKey}" aria-label="Remove">×</button></label>`).join('')}</div>${addForm(s.stateKey,'item','Add another…')}`;
-    }
-    if(s.type==='mnch'){
-      const v=criteriaState.mnch;
-      return `<div class="mnch-banner">⚠ &nbsp;Contradictory in Aceso's documentation — treated as Human Review Required until resolved.</div><div class="mnch-options">${[['human_review','Human Review Required (current)'],['include','Always include'],['exclude','Always exclude']].map(([val,label])=>`<label><input type="radio" name="mnchMode" value="${val}" ${v===val?'checked':''}><span>${label}</span></label>`).join('')}</div>`;
-    }
-    return `<div class="notebook-settings">${(s.settings||[]).map(x=>`<button class="selected"><span>✓</span>${x}</button>`).join('')}</div>`;
+  // Exclusion reasons come from both code rules and the AI's own wording, so
+  // map each one back to the rule it corresponds to before counting.
+  function reasonLabel(raw){
+    const t=raw.toLowerCase();
+    const rule=(criteriaState.knockouts||[]).map(k=>k.label).find(l=>t.includes(l.toLowerCase()));
+    if(rule)return rule;
+    if(/goods|equipment|civil works|construction|infrastructure/.test(t))return 'Excessive focus on physical infrastructure';
+    if(/individual consultant/.test(t))return 'Restricted to individual consultants, not firms';
+    if(/conflict/.test(t))return 'Work located in a conflict area';
+    if(/vague/.test(t))return 'Scope of work too vague to evaluate';
+    if(/language/.test(t))return 'Incompatible language requirements';
+    if(/incorporat/.test(t))return 'Local incorporation required';
+    if(/eligib|restricted to/.test(t))return 'Eligibility restricted to a country/region that excludes Aceso';
+    return raw?raw.charAt(0).toUpperCase()+raw.slice(1):'Other rule';
   }
 
-  function resetCriterionState(s){
-    if(s.type==='chips'||s.type==='checklist'){criteriaState[s.stateKey]=JSON.parse(JSON.stringify(DEFAULT_CRITERIA_STATE[s.stateKey]))}
-    else if(s.type==='chip-groups'){s.groups.forEach(g=>{criteriaState[g.key]=JSON.parse(JSON.stringify(DEFAULT_CRITERIA_STATE[g.key]))})}
-    else if(s.type==='budget'){criteriaState.budget=JSON.parse(JSON.stringify(DEFAULT_CRITERIA_STATE.budget))}
-    else if(s.type==='languages'){criteriaState.languages=JSON.parse(JSON.stringify(DEFAULT_CRITERIA_STATE.languages))}
-    else if(s.type==='mnch'){criteriaState.mnch=DEFAULT_CRITERIA_STATE.mnch}
-    saveCriteriaState();
+  function liveNumbers(){
+    const act=typeof opportunities!=='undefined'?opportunities:[], out=typeof discarded!=='undefined'?discarded:[];
+    const tier=s=>act.filter(o=>o.status===s).length;
+    const reasons={};out.forEach(d=>{const r=reasonLabel((d&&d[3])||'');reasons[r]=(reasons[r]||0)+1});
+    return {found:act.length+out.length,excluded:out.length,scored:act.length,recommended:tier('Recommended'),decision:tier('Decision needed'),low:tier('Low fit'),
+      flagged:act.filter(o=>o.meta&&(o.meta.reviewFlags||[]).length).length,
+      reasons:Object.entries(reasons).sort((a,b)=>b[1]-a[1]).slice(0,4)};
   }
 
-  function bindSettings(s){
-    qa('[data-remove]').forEach(btn=>btn.onclick=()=>{const key=btn.dataset.key;criteriaState[key].splice(Number(btn.dataset.remove),1);saveCriteriaState();renderNotebook();say('Criteria updated.')});
-    qa('[data-toggle]').forEach(input=>input.onchange=()=>{const key=input.dataset.key;criteriaState[key][Number(input.dataset.toggle)].enabled=input.checked;saveCriteriaState();renderNotebook();say('Criteria updated.')});
-    qa('.chip-add').forEach(form=>{
-      const key=form.dataset.key,mode=form.dataset.mode,input=form.querySelector('input'),addBtn=form.querySelector('button');
-      const commit=()=>{const val=input.value.trim();if(!val)return;if(!criteriaState[key])criteriaState[key]=[];if(mode==='chip'){if(criteriaState[key].some(x=>x.toLowerCase()===val.toLowerCase())){say('Already in the list.');return}criteriaState[key].push(val)}else{criteriaState[key].push({id:key+'-'+Date.now(),label:val,enabled:true})}saveCriteriaState();renderNotebook();say('Criteria updated.')};
-      addBtn.onclick=commit;form.onsubmit=e=>{e.preventDefault();commit()};
+  function flowPages(){
+    const n=liveNumbers(), max=Math.max(1,n.found), pct=v=>Math.round(v/max*100);
+    const bar=(label,v,note,cls)=>`<div class="flow-bar ${cls}"><div class="flow-bar-label"><b data-count="${v}">0</b><span>${label}<small>${note}</small></span></div><i><u style="--w:${pct(v)}%"></u></i></div>`;
+    const reasonMax=Math.max(1,...n.reasons.map(r=>r[1]));
+    const steps=[['⇣','Collect','Open notices from Grants.gov, World Bank, Coefficient Giving, Unitaid, UNDP and UNGM.'],['⌫','Clean up','Notices whose deadline already passed are dropped; duplicates are merged.'],['✕','Knock-outs','Excluded only when a rule clearly applies. When in doubt, the notice stays.',3],['◎','Score 0–100','The AI compares the full notice with your lists: topic, activity, region, funder, budget, eligibility.',1],['△','Flag','Review flags like a tight deadline or an unpublished budget. A flag never excludes.',3],['✓','You decide','A person approves, rejects or recovers any case. The agent only recommends.']];
+    return `<article class="notebook-page flow-page"><p class="page-count">01 <span>/ 0${SECTIONS.length}</span></p><h2>How every opportunity is decided</h2><p>Every notice goes through the same route, and nothing disappears silently: each exclusion keeps its reason.</p>
+      ${n.found?'':'<p class="flow-empty">Run a search to see the last search’s numbers here.</p>'}
+      <h3>Last search, step by step</h3>
+      <div class="flow-bars">${bar('Collected',n.found,'from 6 public sources','fb-all')}${bar('Excluded by a rule',n.excluded,'kept with the exact reason','fb-out')}${bar('Scored by AI',n.scored,'fit score 0–100','fb-in')}</div>
+      <div class="flow-tiers"><span class="t-rec"><b data-count="${n.recommended}">0</b>Recommended<small>85+</small></span><span class="t-dec"><b data-count="${n.decision}">0</b>Decision needed<small>65–84</small></span><span class="t-low"><b data-count="${n.low}">0</b>Low fit<small>under 65</small></span></div>
+      ${n.reasons.length?`<h3>Why notices were excluded</h3><div class="flow-reasons">${n.reasons.map(([r,c])=>`<div><span>${esc(r)}</span><i><u style="--w:${Math.round(c/reasonMax*100)}%"></u></i><b>${c}</b></div>`).join('')}</div>`:''}
+    </article>
+    <article class="notebook-page flow-steps-page"><p class="eyebrow">THE AGENT’S ROUTE</p><h2>Six steps, one human decision</h2>
+      <ol class="flow-steps">${steps.map((s,i)=>`<li style="--i:${i}"${s[3]?` data-go="${s[3]}" title="See the rules"`:''}><i>${s[0]}</i><span><b>${s[1]}</b><p>${s[2]}</p></span>${s[3]?'<em>Edit →</em>':''}</li>`).join('')}</ol>
+      <aside class="worked-example"><small>GOOD TO KNOW</small><p>Every excluded notice can be reviewed and recovered from Opportunities › Discarded.${n.flagged?` In the last search, ${n.flagged} scored opportunities carry at least one review flag.`:''}</p></aside>
+    </article>`;
+  }
+
+  function listPages(s){
+    return `<article class="notebook-page settings-page"><p class="page-count">0${criterion+1} <span>/ 0${SECTIONS.length}</span></p><h2>${s.title}</h2><p>${s.purpose}</p><div class="settings-heading"><h3>Your lists</h3><button type="button" id="resetCriterion" class="reset-link">↺ Reset to Aceso defaults</button></div><div class="chip-groups">${s.groups.map(([k,l])=>chipGroup(k,l)).join('')}</div></article>
+    <article class="notebook-page playbook-page"><p class="eyebrow">HOW THE AGENT USES THIS</p><h2>In plain words</h2><div class="notebook-actions">${s.uses.map((x,i)=>`<div><i>${i+1}</i><span><b>${x[0]}</b><p>${x[1]}</p></span></div>`).join('')}</div><aside class="worked-example"><small>EXAMPLE</small><p>${s.example}</p></aside></article>`;
+  }
+
+  function rulesPages(){
+    const b=criteriaState.budget,l=criteriaState.languages;
+    const lang=(k,label)=>`<label><input type="checkbox" data-lang="${k}" ${l[k]?'checked':''}><span>${label}</span></label>`;
+    return `<article class="notebook-page settings-page rules-out"><p class="page-count">04 <span>/ 0${SECTIONS.length}</span></p><div class="settings-heading"><h2><i class="rule-dot out">✕</i>Excluded outright</h2><button type="button" id="resetCriterion" class="reset-link">↺ Reset to Aceso defaults</button></div><p>Checked first. A notice is excluded only when a rule clearly applies, and the rule is saved with it. Switch a rule off and it stops being applied on the next search.</p>
+      ${checklist('knockouts')}
+      <h3>Languages Aceso delivers in</h3><div class="language-editor inline">${lang('english','English')}${lang('spanish','Spanish')}${lang('portuguese','Portuguese')}</div><p class="rules-hint">Any other language usually scores as low fit.</p></article>
+    <article class="notebook-page rules-flag"><p class="eyebrow">NEVER EXCLUDES</p><h2><i class="rule-dot flag">△</i>Kept, but flagged</h2><p>A flag travels with the opportunity so the reviewer knows what to check. An opportunity can carry several.</p>
+      <h3>Budget</h3><div class="budget-editor"><label class="budget-min"><span>Flag budgets below (USD)</span><input type="number" id="budgetMinInput" value="${b.min}" step="10000" min="0"></label><label class="budget-flag"><input type="checkbox" id="budgetFlagLarge" ${b.flagLarge?'checked':''}><span>Also flag budgets of $5M or more, to check delivery capacity</span></label></div>
+      <label class="budget-flag french-flag"><input type="checkbox" data-lang="frenchReview" ${l.frenchReview?'checked':''}><span>French notices go to human review instead of being scored as low fit</span></label>
+      <h3>Other flags</h3>${checklist('reviewFlags')}</article>`;
+  }
+
+  function infoPages(){
+    const src=lastSearch&&lastSearch.sources, when=lastSearch&&lastSearch.searchedAt?new Date(lastSearch.searchedAt).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}):null;
+    return `<article class="notebook-page info-page"><p class="page-count">05 <span>/ 0${SECTIONS.length}</span></p><h2>Where opportunities come from</h2><p>Six free public sources, searched only when you press Search now.${when?` Numbers from the search of ${when}.`:''}</p>
+      <div class="source-grid">${SOURCES.map(([k,name,how],i)=>{const d=src&&src[k];const state=!d?'idle':d.ok?'ok':'down';return `<div class="source-card ${state}" style="--i:${i}"><span class="src-dot"></span><b>${name}</b><small>${how}</small><strong>${d?(d.ok?`<em data-count="${d.count}">0</em> notices`:'Unavailable'):'Not searched yet'}</strong></div>`}).join('')}</div>
+      <p class="rules-hint">No credentials are stored in this interface. API keys live on the server.</p></article>
+    <article class="notebook-page timing-page"><p class="eyebrow">TIMING</p><h2>How deadlines are handled</h2>
+      <div class="deadline-track"><span class="dz past"><b>Passed</b><small>dropped</small></span><span class="dz soon"><b>Due soon</b><small>flagged</small></span><span class="dz ok"><b>Later</b><small>normal</small></span><i class="today-marker"><small>Today</small></i></div>
+      <div class="notebook-actions">
+        <div><i>1</i><span><b>Deadline already passed</b><p>Dropped before scoring. It never appears, not even in Discarded.</p></span></div>
+        <div><i>2</i><span><b>Due within about two weeks</b><p>Kept and scored, with a “Tight submission deadline” flag.</p></span></div>
+        <div><i>3</i><span><b>No date, or a date without a year</b><p>Kept, and shown exactly as published so a person can verify it.</p></span></div>
+        <div><i>4</i><span><b>Every search is saved</b><p>Results survive a reload. A new search runs only when you ask for it.</p></span></div>
+      </div></article>`;
+  }
+
+  function animateNotebook(view){
+    const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+    qa('[data-count]',view).forEach(el=>{const target=Number(el.dataset.count)||0;if(reduce||!target){el.textContent=target;return}const t0=performance.now();const tick=t=>{const p=Math.min(1,(t-t0)/700);el.textContent=Math.round(target*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(tick)};requestAnimationFrame(tick)});
+    requestAnimationFrame(()=>requestAnimationFrame(()=>view.querySelector('.criteria-notebook')?.classList.add('animate-in')));
+  }
+
+  function resetSection(s){
+    const keys=s.type==='lists'?s.groups.map(g=>g[0]):s.type==='rules'?['knockouts','reviewFlags','budget','languages']:[];
+    keys.forEach(k=>{criteriaState[k]=JSON.parse(JSON.stringify(DEFAULT_CRITERIA_STATE[k]))});saveCriteriaState();
+  }
+
+  function bindSettings(view){
+    const changed=m=>{saveCriteriaState();say(m||'Saved. Applied on the next search.')};
+    qa('[data-remove]',view).forEach(btn=>btn.onclick=()=>{criteriaState[btn.dataset.key].splice(Number(btn.dataset.remove),1);changed();renderNotebook(false)});
+    qa('[data-toggle]',view).forEach(input=>input.onchange=()=>{criteriaState[input.dataset.key][Number(input.dataset.toggle)].enabled=input.checked;input.closest('.checklist-item')?.classList.toggle('off',!input.checked);changed()});
+    qa('.chip-add',view).forEach(form=>{
+      const key=form.dataset.key,mode=form.dataset.mode,input=form.querySelector('input');
+      const commit=()=>{const val=input.value.trim();if(!val)return;const list=criteriaState[key]||(criteriaState[key]=[]);const exists=list.some(x=>(typeof x==='string'?x:x.label).toLowerCase()===val.toLowerCase());if(exists){say('Already in the list.');return}list.push(mode==='chip'?val:{id:key+'-'+Date.now(),label:val,enabled:true});changed();renderNotebook(false)};
+      form.querySelector('button').onclick=commit;form.onsubmit=e=>{e.preventDefault();commit()};
     });
-    if(s.type==='budget'){
-      q('#budgetMinInput').onchange=e=>{criteriaState.budget.min=Math.max(0,Number(e.target.value)||0);saveCriteriaState();say('Budget threshold updated.')};
-      q('#budgetFlagLarge').onchange=e=>{criteriaState.budget.flagLarge=e.target.checked;saveCriteriaState();say('Criteria updated.')};
-    }
-    if(s.type==='languages'){
-      qa('[data-lang]').forEach(input=>input.onchange=()=>{criteriaState.languages[input.dataset.lang]=input.checked;saveCriteriaState();say('Language rules updated.')});
-    }
-    if(s.type==='mnch'){
-      qa('[name="mnchMode"]').forEach(input=>input.onchange=()=>{if(input.checked){criteriaState.mnch=input.value;saveCriteriaState();say('MNCH handling updated.')}});
-    }
-    if(!s.type||s.type==='sources'){
-      qa('.notebook-settings button').forEach(b=>b.onclick=()=>b.classList.toggle('selected'));
-    }
+    const min=q('#budgetMinInput',view);if(min)min.onchange=e=>{criteriaState.budget.min=Math.max(0,Number(e.target.value)||0);changed(`Budget flag set below ${fmtUSD(criteriaState.budget.min)}.`)};
+    const large=q('#budgetFlagLarge',view);if(large)large.onchange=e=>{criteriaState.budget.flagLarge=e.target.checked;changed()};
+    qa('[data-lang]',view).forEach(input=>input.onchange=()=>{criteriaState.languages[input.dataset.lang]=input.checked;changed()});
+    qa('[data-go]',view).forEach(li=>li.onclick=()=>{criterion=Number(li.dataset.go);renderNotebook()});
   }
 
-  function renderNotebook(){
-    const view=q('#criteriaView'),s=criteria[criterion]; if(!view)return;
-    const editable=['chips','chip-groups','budget','languages','checklist','mnch'].includes(s.type);
-    const total=criteria.length;
-    const readyCount=typeof activeOpportunities==='function'?activeOpportunities().length:0;
-    const excludedCount=(typeof discarded!=='undefined'?discarded:[]).length;
-    view.innerHTML=`<header class="notebook-head"><div><p class="eyebrow">SEARCH & DECISION CRITERIA</p><h1>How the opportunity agent works</h1><p>A guided notebook for configuring the agent and understanding exactly where human judgment begins.${editable?' Every list on this page is editable — changes are saved for the next search.':''}</p></div><aside><b>LIVE PILOT</b><strong>${readyCount}</strong><span>ready for review</span><small>${excludedCount} excluded with traceable reasons</small></aside></header>
-      <section class="criteria-notebook"><i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i><i class="ring r4"></i>
-        <article class="notebook-page settings-page"><p class="page-count">CRITERION ${String(criterion+1).padStart(2,'0')} <span>/ ${String(total).padStart(2,'0')}</span></p><h2>${s.title}</h2><p>${s.purpose}</p><div class="settings-heading"><h3>${s.settingsLabel||'Current pilot settings'}</h3>${editable?'<button type="button" id="resetCriterion" class="reset-link">↺ Reset to Aceso defaults</button>':''}</div><div class="notebook-settings-editable">${settingsHTML(s)}</div><div class="rule-note"><small>DECISION RULE</small><b>${s.rule}</b></div>${s.legend?`<div class="rfp-legend"><small>RFP CLASSIFICATION</small>${s.legend.map(x=>`<div><span class="tag rfp-status ${x[0]}">${x[1]}</span><p>${x[2]}</p></div>`).join('')}</div>`:''}</article>
-        <article class="notebook-page playbook-page"><div class="owner-tabs"><button data-owner="agent" class="${owner==='agent'?'active':''}">Agent</button><button data-owner="human" class="${owner==='human'?'active':''}">Human</button></div><p class="eyebrow">${owner==='agent'?'WHAT THE AGENT DOES':'WHAT THE REVIEWER DECIDES'}</p><h2>${owner==='agent'?'Automated screening playbook':'Required human checkpoints'}</h2><div class="notebook-actions">${s[owner].map((x,i)=>`<div><i>${i+1}</i><span><b>${x[0]}</b><p>${x[1]}</p></span></div>`).join('')}</div><aside class="worked-example"><small>WORKED EXAMPLE</small><p>${s.example}</p><b>${owner==='agent'?'Agent output: documented recommendation':'Human output: recorded decision'}</b></aside></article>
-      </section><footer class="notebook-footer"><button id="criterionPrev" ${criterion===0?'disabled':''}>← Previous</button><nav>${criteria.map((x,i)=>`<button data-criterion="${i}" class="${i===criterion?'active':i<criterion?'done':''}"><i>${i<criterion?'✓':i+1}</i><span>${x.key}</span></button>`).join('')}</nav><button id="criterionNext">${criterion===total-1?'Save criteria':'Next criterion →'}</button></footer>`;
-    qa('[data-owner]').forEach(b=>b.onclick=()=>{owner=b.dataset.owner;renderNotebook()});
-    qa('[data-criterion]').forEach(b=>b.onclick=()=>{criterion=Number(b.dataset.criterion);owner='agent';renderNotebook()});
-    q('#criterionPrev').onclick=()=>{if(criterion){criterion--;owner='agent';renderNotebook()}};
-    q('#criterionNext').onclick=()=>{if(criterion<total-1){criterion++;owner='agent';renderNotebook()}else say('Criteria saved and applied to the next agent search.')};
-    bindSettings(s);
-    if(q('#resetCriterion'))q('#resetCriterion').onclick=()=>{resetCriterionState(s);renderNotebook();say('Reset to Aceso defaults.')};
+  function renderNotebook(animate=true){
+    const view=q('#criteriaView'),s=SECTIONS[criterion]; if(!view)return;
+    const total=SECTIONS.length, n=liveNumbers();
+    const pages=s.type==='flow'?flowPages():s.type==='lists'?listPages(s):s.type==='rules'?rulesPages():infoPages();
+    view.innerHTML=`<header class="notebook-head"><div><p class="eyebrow">SEARCH & DECISION CRITERIA</p><h1>How the opportunity agent decides</h1><p>Five pages: how a decision is made, what Aceso looks for, and what gets excluded or flagged. Every edit is saved and applied on the next search.</p></div><aside><b>LAST SEARCH</b><strong>${n.scored}</strong><span>ready for review</span><small>${n.excluded} excluded with a traceable reason</small></aside></header>
+      <section class="criteria-notebook criteria-v3 type-${s.type}${animate?'':' animate-in'}"><i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i><i class="ring r4"></i>${pages}</section>
+      <footer class="notebook-footer"><button id="criterionPrev" ${criterion===0?'disabled':''}>← Previous</button><nav>${SECTIONS.map((x,i)=>`<button data-criterion="${i}" class="${i===criterion?'active':i<criterion?'done':''}"><i>${i+1}</i><span>${x.key}</span></button>`).join('')}</nav><button id="criterionNext">${criterion===total-1?'Back to start':'Next →'}</button></footer>`;
+    qa('[data-criterion]',view).forEach(b=>b.onclick=()=>{criterion=Number(b.dataset.criterion);renderNotebook()});
+    q('#criterionPrev',view).onclick=()=>{if(criterion){criterion--;renderNotebook()}};
+    q('#criterionNext',view).onclick=()=>{criterion=criterion<total-1?criterion+1:0;renderNotebook()};
+    bindSettings(view);
+    const reset=q('#resetCriterion',view);if(reset)reset.onclick=()=>{resetSection(s);renderNotebook(false);say('Reset to Aceso defaults.')};
+    if(animate)animateNotebook(view);else qa('[data-count]',view).forEach(el=>el.textContent=el.dataset.count);
   }
+
+  document.addEventListener('aceso:live-search-complete',e=>{
+    const d=e.detail||{};lastSearch={sources:d.sources,searchedAt:d.searchedAt};
+    if(q('#criteriaView')?.classList.contains('active'))renderNotebook(false);
+  });
 
   function tuneToday(){
     const headline=q('#todayView .hero-copy h1');

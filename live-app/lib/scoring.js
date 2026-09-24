@@ -1,5 +1,5 @@
 const { callGemini, hasGeminiKey } = require('./gemini');
-const { DEFAULT_CRITERIA } = require('./criteria');
+const { DEFAULT_CRITERIA, FIXED_FLAGS, activeLabels } = require('./criteria');
 
 function parseBudgetNumber(value) {
   if (!value || typeof value !== 'string') return null;
@@ -17,11 +17,16 @@ function parseBudgetNumber(value) {
 // The two budget flags are derived from the parsed value, so they are always
 // recomputed from it — Gemini's own flags or a stale saved result can't
 // contradict what the table shows.
-function reconcileBudgetFlags(flags, value, min = DEFAULT_CRITERIA.budget.min) {
-  const rest = (flags || []).filter(f => f !== 'Budget not published' && f !== 'Clearly insufficient budget');
+const LARGE_BUDGET = 5e6;
+
+function reconcileBudgetFlags(flags, value, min = DEFAULT_CRITERIA.budget.min, flagLarge = DEFAULT_CRITERIA.budget.flagLarge) {
+  const rest = (flags || []).filter(f => f !== 'Budget not published' && !FIXED_FLAGS.includes(f));
   if (!value || value === 'Not disclosed') return [...rest, 'Budget not published'];
   const amount = parseBudgetNumber(value);
-  return amount != null && amount < min ? [...rest, 'Clearly insufficient budget'] : rest;
+  if (amount == null) return rest;
+  if (amount < min) return [...rest, 'Clearly insufficient budget'];
+  if (flagLarge && amount >= LARGE_BUDGET) return [...rest, 'Very large budget — check capacity'];
+  return rest;
 }
 
 function fitTierFor(score, disqualified) {
@@ -46,6 +51,7 @@ const CONFLICT_AREA_COUNTRIES = ['Syria', 'Yemen', 'Afghanistan', 'Somalia', 'So
 // as a review flag instead, per "ante la duda, incluir."
 function runKnockouts(opp, criteria) {
   const flags = [];
+  const active = new Set(activeLabels(criteria?.knockouts, DEFAULT_CRITERIA.knockouts));
   const min = criteria?.budget?.min ?? DEFAULT_CRITERIA.budget.min;
   const amount = parseBudgetNumber(opp.value);
   const titleLower = (opp.title || '').toLowerCase();
@@ -56,21 +62,22 @@ function runKnockouts(opp, criteria) {
   // "Already closed" is filtered out entirely in server.js before this ever
   // runs — a closed notice isn't worth reviewing, active or excluded.
 
-  if (!disqualified && /individual consultant/i.test(opp.raw?.procurementMethod || '')) {
+  const individualRule = active.has('Restricted to individual consultants, not firms');
+  if (!disqualified && individualRule && /individual consultant/i.test(opp.raw?.procurementMethod || '')) {
     disqualified = true;
     reason = 'Restricted to individual consultants, not firms';
   }
-  if (!disqualified && /individual consultant/.test(titleLower)) {
+  if (!disqualified && individualRule && /individual consultant/.test(titleLower)) {
     disqualified = true;
     reason = 'Restricted to individual consultants, not firms';
   }
 
-  if (!disqualified && GOODS_OR_WORKS_PATTERN.test(combinedText)) {
+  if (!disqualified && active.has('Excessive focus on physical infrastructure') && GOODS_OR_WORKS_PATTERN.test(combinedText)) {
     disqualified = true;
     reason = 'Excessive focus on physical infrastructure (goods/civil-works procurement, not advisory services)';
   }
 
-  if (!disqualified && CONFLICT_AREA_COUNTRIES.some(c => (opp.country || '').includes(c))) {
+  if (!disqualified && active.has('Work located in a conflict area') && CONFLICT_AREA_COUNTRIES.some(c => (opp.country || '').includes(c))) {
     disqualified = true;
     reason = 'Work located in a conflict area';
   }
@@ -108,15 +115,20 @@ function heuristicEvaluate(opp, criteria) {
 
 function buildPrompt(opp, criteria) {
   const c = { ...DEFAULT_CRITERIA, ...criteria };
+  const lang = { ...DEFAULT_CRITERIA.languages, ...(criteria?.languages || {}) };
+  const accepted = [lang.english && 'English', lang.spanish && 'Spanish', lang.portuguese && 'Portuguese'].filter(Boolean);
+  const knockouts = activeLabels(criteria?.knockouts, DEFAULT_CRITERIA.knockouts);
+  const flagOptions = activeLabels(criteria?.reviewFlags, DEFAULT_CRITERIA.reviewFlags).filter(f => f !== 'Budget not published');
+  const funders = [...c.fundersMDB, ...(c.fundersPhilanthropic || []), ...c.fundersGov, ...c.fundersUS].filter(f => !/add specific names/i.test(f));
   return `You are the screening agent for Aceso Global, a health-systems consulting firm. Evaluate ONE procurement/funding opportunity against Aceso's criteria and return ONLY a JSON object (no prose, no markdown fences).
 
 ACESO CRITERIA
 Focus areas: ${c.focusAreas.join('; ')}
 Relevant activities: ${c.activities.join('; ')}
 Priority regions (bonus, not required): ${c.regions.join('; ')}
-Preferred funders (bonus signal): ${[...c.fundersMDB, ...c.fundersGov, ...c.fundersUS].join('; ')}
+Preferred funders (bonus signal): ${funders.join('; ')}
 Preferred minimum budget: $${c.budget.min.toLocaleString('en-US')} USD (a soft review threshold, not an automatic rejection)
-Accepted languages: English, Spanish, Portuguese outright; French needs human review; anything else is usually low fit.
+Accepted languages: ${accepted.join(', ') || 'none configured'} outright; French ${lang.frenchReview ? 'is never auto-accepted or auto-rejected — score it normally and add the review flag "French — human review"' : 'is not accepted'}; anything else is usually low fit.
 
 OPPORTUNITY
 Title: ${opp.title}
@@ -124,7 +136,7 @@ Funder/organization: ${opp.org}
 Country/region: ${opp.country}
 Type: ${opp.type}
 Value: ${opp.value}
-Deadline: ${opp.due}
+Deadline: ${opp.due} (today is ${new Date().toISOString().slice(0, 10)}; add the "Tight submission deadline" flag if it is less than 14 days away)
 Source: ${opp.source}
 Description / notice text (may be partial): ${(opp.raw?.description || '').slice(0, 3000)}
 
@@ -133,13 +145,10 @@ First check the Aceso quick knock-outs below. If ANY clearly apply, set
 Only disqualify on a clear match — if it's ambiguous, do NOT disqualify;
 leave it for human review instead (score normally, add a review flag).
 
-QUICK KNOCK-OUTS (any one, if clearly true, disqualifies):
-Restricted to individual consultants, not firms; full-time in-country
-presence required; local incorporation required; eligibility restricted to
-a country/region that excludes Aceso; work located in a conflict area;
-this is procurement of goods, equipment or civil works/construction, not
-an advisory/consulting assignment; scope of work too vague to evaluate;
-opportunity already closed (deadline passed).
+QUICK KNOCK-OUTS (any one, if clearly true, disqualifies — use the exact wording as disqualifiedReason):
+${knockouts.length ? knockouts.join('; ') : '(none active — do not disqualify)'}.
+"Excessive focus on physical infrastructure" means procurement of goods, equipment or civil works/construction rather than an advisory/consulting assignment.
+The budget is never a knock-out.
 
 Return this exact JSON shape:
 {
@@ -151,7 +160,7 @@ Return this exact JSON shape:
   "eligibility": "<1 sentence: who can apply, any red flags (national-firm-only, in-country incorporation, etc.)>",
   "qualifications": "<1 sentence: required qualifications/experience if stated, else 'Not specified'>",
   "keywords": ["<3-5 short keyword phrases>"],
-  "reviewFlags": ["<zero or more from: Tight submission deadline, Missing or incomplete TOR/RFP, Budget not published, Unfamiliar or inconsistent funder, Unclear eligibility, Limited information available>"],
+  "reviewFlags": ["<zero or more, exact wording, only from: ${[...flagOptions, ...(lang.frenchReview ? ['French — human review'] : [])].join(', ') || '(none)'}>"],
   "explanation": "<2-3 sentences explaining the score or the disqualification, written for a human analyst>"
 }`;
 }
@@ -243,7 +252,10 @@ async function evaluateOpportunity(opp, criteria) {
   // The parsed opp.value is the ground truth for this specific flag, so
   // it always wins over whatever Gemini said.
   let reviewFlags = Array.from(new Set([...(evaluation.reviewFlags || []), ...knockout.flags]));
-  reviewFlags = reconcileBudgetFlags(reviewFlags, opp.value, criteria?.budget?.min ?? DEFAULT_CRITERIA.budget.min);
+  reviewFlags = reconcileBudgetFlags(reviewFlags, opp.value, criteria?.budget?.min ?? DEFAULT_CRITERIA.budget.min, criteria?.budget?.flagLarge ?? DEFAULT_CRITERIA.budget.flagLarge);
+  // Only flags switched on in Criteria (plus the budget flags enforced in code) survive.
+  const allowed = new Set([...activeLabels(criteria?.reviewFlags, DEFAULT_CRITERIA.reviewFlags), ...FIXED_FLAGS, 'French — human review']);
+  reviewFlags = reviewFlags.filter(f => allowed.has(f));
   const fitTier = fitTierFor(evaluation.score, false);
 
   return { ...evaluation, fitTier, reviewFlags, knockedOut: false, usedGemini };
