@@ -28,6 +28,8 @@
     ['knockouts','reviewFlags'].forEach(k=>{if(Array.isArray(state[k]))state[k]=state[k].filter(x=>!LEGACY_LABELS.includes(x&&x.label))});
     state.fundersPhilanthropic=(state.fundersPhilanthropic||[]).filter(x=>!/add specific names/i.test(x));
     delete state.mnch;
+    // Unchecked Focus areas / Activities: kept for the UI, never sent to the agent.
+    state.inactive=state.inactive&&typeof state.inactive==='object'?state.inactive:{};
     return state;
   }
   function saveCriteriaState(){try{localStorage.setItem(CRITERIA_STATE_KEY,JSON.stringify(criteriaState))}catch(e){}}
@@ -68,71 +70,96 @@
   fetch('/api/health').then(r=>r.json()).then(d=>{aiScoring=Boolean(d.geminiConfigured);if(q('#criteriaView')?.classList.contains('active'))renderNotebook(false)}).catch(()=>{});
 
   const SOURCES=[
-    ['grantsGov','Grants.gov','U.S. federal grants','Official API'],
-    ['worldBank','World Bank','Projects & procurement','Official API'],
-    ['coefficientGiving','Coefficient Giving','Philanthropic funding','AI separates RFPs from news'],
-    ['unitaid','Unitaid','Global health procurement','Public notices page'],
-    ['undp','UNDP','Development procurement','Public notices page'],
-    ['ungm','UNGM','UN Global Marketplace','Read with a headless browser']
+    ['grantsGov','Grants.gov','U.S. federal grants','Official API','grantsgov.png'],
+    ['worldBank','World Bank','Projects & procurement','Official API','worldbank.png'],
+    ['coefficientGiving','Coefficient Giving','Philanthropic funding','AI separates RFPs from news','coefficient.png'],
+    ['unitaid','Unitaid','Global health procurement','Public notices page','unitaid.png'],
+    ['undp','UNDP','Development procurement','Public notices page','undp.svg'],
+    ['ungm','UNGM','UN Global Marketplace','Read with a headless browser','ungm.png']
   ];
-  const FUNDER_GROUPS=[['fundersMDB','Development banks'],['fundersPhilanthropic','Foundations'],['fundersGov','Government aid agencies'],['fundersUS','U.S. government']];
-  const CHIP_PREVIEW=8;
+  const FUNDER_GROUPS=[['fundersMDB','Development bank'],['fundersPhilanthropic','Foundation'],['fundersGov','Government aid'],['fundersUS','U.S. government']];
+  const PREVIEW=8;
   let criterion=0, side='agent', lastSearch=null;
-  const expanded={};
+  const expanded={}, adding={};
   const esc=v=>typeof escapeHtml==='function'?escapeHtml(v):String(v);
   const fmtUSD=n=>n>=1e6?`$${(n/1e6).toFixed(n%1e6?1:0)}M`:`$${Math.round(n/1e3)}K`;
+  const ICON={target:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>',pin:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',bank:'<svg viewBox="0 0 24 24"><path d="M3 9l9-5 9 5M5 9v9M9.5 9v9M14.5 9v9M19 9v9M3 20h18"/></svg>',trash:'<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>'};
+  const svg=k=>`<i class="nb-ico" aria-hidden="true">${ICON[k]}</i>`;
 
-  // ---- left-page controls ---------------------------------------------------
-  function chips(key,label,opts={}){
-    const arr=criteriaState[key]||[], open=expanded[key]||arr.length<=CHIP_PREVIEW, shown=open?arr:arr.slice(0,CHIP_PREVIEW);
-    return `<div class="nb-group${opts.sub?' sub':''}"><div class="nb-group-head"><h4>${label}<span>${arr.length}</span></h4>${opts.tag?`<em class="nb-tag" title="${esc(opts.tagTitle||'')}">${opts.tag}</em>`:''}</div>
-      <div class="nb-chips">${shown.map(v=>`<span class="nb-chip">${esc(v)}<button type="button" data-remove="${arr.indexOf(v)}" data-key="${key}" aria-label="Remove ${esc(v)}">×</button></span>`).join('')}${arr.length>CHIP_PREVIEW?`<button type="button" class="nb-more" data-expand="${key}">${open?'Show less':`+${arr.length-CHIP_PREVIEW} more`}</button>`:''}
-      <form class="chip-add nb-add-chip" data-key="${key}" data-mode="chip"><input type="text" placeholder="+ Add" aria-label="Add to ${label}" required><button type="button" aria-label="Add">↵</button></form></div>
-      ${!arr.length&&opts.empty?`<p class="nb-empty">${opts.empty}</p>`:''}</div>`;
+  // "+ Add …" opens an inline input in place, so adding is one click away but
+  // doesn't clutter the page with empty fields.
+  function addControl(key,label,mode,extra=''){
+    if(!adding[key])return `<button type="button" class="nb-add-open" data-add-open="${key}">＋ ${label}</button>`;
+    return `<form class="chip-add nb-add-inline" data-key="${key}" data-mode="${mode}">${extra}<input type="text" placeholder="${esc(label)}…" required><button type="button">Add</button><button type="button" class="nb-add-cancel" data-add-close="${key}" aria-label="Cancel">×</button></form>`;
   }
-  function ruleList(key,sourceOf){
-    const arr=criteriaState[key]||[];
-    return `<div class="nb-rules">${arr.map((item,i)=>{const src=sourceOf(item.label);return `<label class="nb-rule ${item.enabled?'':'off'}"><input type="checkbox" data-toggle="${i}" data-key="${key}" ${item.enabled?'checked':''}><i class="nb-switch" aria-hidden="true"></i><span>${esc(item.label)}</span><em class="nb-src ${src}" title="${src==='code'?'Checked in code on every search':'Applied by the AI when it reads the notice'}">${src==='code'?'Code':'AI'}</em><button type="button" data-remove="${i}" data-key="${key}" aria-label="Remove ${esc(item.label)}">×</button></label>`}).join('')}</div>
-      <form class="chip-add nb-add-rule" data-key="${key}" data-mode="item"><input type="text" placeholder="Add a rule…" required><button type="button">+ Add</button></form>`;
+
+  // Checkbox grid for plain string lists. Unchecking moves an item to
+  // criteriaState.inactive[key]; only the checked list is sent to the agent.
+  function checkGrid(key,label,sub,icon,tag,addLabel){
+    const on=criteriaState[key]||[], off=(criteriaState.inactive&&criteriaState.inactive[key])||[];
+    const all=[...on.map(v=>[v,true]),...off.map(v=>[v,false])];
+    const open=expanded[key]||all.length<=PREVIEW, shown=open?all:all.slice(0,PREVIEW);
+    return `<section class="nb-block"><header class="nb-block-head">${svg(icon)}<div><h3>${label}<span class="nb-count">${on.length}${off.length?` of ${all.length}`:''}</span></h3><p>${sub}</p></div>${tag?`<em class="nb-tag" title="${esc(tag[1])}">${tag[0]}</em>`:''}</header>
+      <div class="nb-grid">${shown.map(([v,isOn])=>`<label class="nb-box ${isOn?'':'off'}"><input type="checkbox" data-active="${esc(v)}" data-key="${key}" ${isOn?'checked':''}><span>${esc(v)}</span><button type="button" data-drop="${esc(v)}" data-key="${key}" aria-label="Remove ${esc(v)}">×</button></label>`).join('')}</div>
+      <div class="nb-block-foot">${all.length>PREVIEW?`<button type="button" class="nb-more" data-expand="${key}">${open?'Show fewer':`Show all ${all.length}`}</button>`:'<span></span>'}${addControl(key,addLabel,'chip')}</div></section>`;
   }
+
+  function leftFocus(){
+    return `${checkGrid('focusAreas','Focus areas','The themes the agent should look for.','target',['AI + fallback','Used by the AI and by the keyword fallback scorer'],'Add focus area')}
+      <div class="nb-sep"></div>
+      ${checkGrid('activities','Activities Aceso delivers','The types of work the agent should prioritize.','gear',['AI','Used by the AI when it reads the notice'],'Add activity')}`;
+  }
+
+  function leftGeo(){
+    const regions=criteriaState.regions||[];
+    const funders=FUNDER_GROUPS.flatMap(([k,type])=>(criteriaState[k]||[]).map((name,i)=>({k,type,name,i})));
+    const typeSelect=`<select name="group" aria-label="Funder type">${FUNDER_GROUPS.map(([k,t])=>`<option value="${k}">${t}</option>`).join('')}</select>`;
+    return `<section class="nb-block"><header class="nb-row-head"><div><h3>Priority regions</h3><p>Prioritise opportunities in these regions.</p></div>${adding.regions?'':`<button type="button" class="nb-link-add" data-add-open="regions">⊕ Add region</button>`}</header>
+        <div class="nb-list">${regions.map((r,i)=>`<div class="nb-list-row">${svg('pin')}<span>${esc(r)}</span><button type="button" data-remove="${i}" data-key="regions" aria-label="Remove ${esc(r)}">×</button></div>`).join('')||'<p class="nb-empty">No priority regions.</p>'}${adding.regions?addControl('regions','Add region','chip'):''}</div></section>
+      <section class="nb-block"><header class="nb-row-head"><div><h3>Preferred funders</h3><p>Give higher consideration to opportunities from these funders.</p></div>${adding.funders?'':`<button type="button" class="nb-link-add" data-add-open="funders">⊕ Add funder</button>`}</header>
+        <div class="nb-list nb-list-scroll">${funders.map(f=>`<div class="nb-list-row">${svg('bank')}<span>${esc(f.name)}</span><small>${f.type}</small><button type="button" data-remove="${f.i}" data-key="${f.k}" aria-label="Remove ${esc(f.name)}">×</button></div>`).join('')}${adding.funders?addControl('funders','Add funder','funder',typeSelect):''}</div></section>`;
+  }
+
+  function leftOut(){
+    const l=criteriaState.languages, arr=criteriaState.knockouts||[];
+    const lang=(k,label)=>`<label class="nb-plain"><input type="checkbox" data-lang="${k}" ${l[k]?'checked':''}><span>${label}</span></label>`;
+    return `${aiNote()}<section class="nb-block"><header class="nb-row-head"><div><h3>Exclusion rules</h3><p><b class="nb-src-key code">Code</b> checked on every search · <b class="nb-src-key ai">AI</b> applied by the AI</p></div></header>
+        <div class="nb-grid">${arr.map((item,i)=>[item,i]).slice(0,expanded.knockouts?arr.length:PREVIEW).map(([item,i])=>{const src=knockoutSource(item.label);return `<label class="nb-box ${item.enabled?'':'off'}"><input type="checkbox" data-toggle="${i}" data-key="knockouts" ${item.enabled?'checked':''}><span>${esc(item.label)}<em class="nb-src ${src}">${src==='code'?'Code':'AI'}</em></span><button type="button" data-remove="${i}" data-key="knockouts" aria-label="Remove ${esc(item.label)}">×</button></label>`}).join('')}</div>
+        <div class="nb-block-foot">${arr.length>PREVIEW?`<button type="button" class="nb-more" data-expand="knockouts">${expanded.knockouts?'Show fewer':`Show all ${arr.length}`}</button>`:'<span></span>'}${addControl('knockouts','Add rule','item')}</div></section>
+      <div class="nb-sep"></div>
+      <section class="nb-block"><header class="nb-row-head"><div><h3>Languages Aceso delivers in</h3><p>Other languages usually score as low fit.</p></div><em class="nb-tag">AI</em></header>
+        <div class="nb-langs">${lang('english','English')}${lang('spanish','Spanish')}${lang('portuguese','Portuguese')}</div></section>`;
+  }
+
+  function leftFlag(){
+    const b=criteriaState.budget,l=criteriaState.languages,arr=criteriaState.reviewFlags||[];
+    const toggle=(attrs,on)=>`<label class="nb-toggle"><input type="checkbox" ${attrs} ${on?'checked':''}><i></i></label>`;
+    const fixedRow=(label,attrs,on,src)=>`<div class="nb-flag-row ${on?'':'off'}"><span class="nb-flag-label">${label}<em class="nb-src ${src}">${src==='code'?'Code':'AI'}</em></span>${toggle(attrs,on)}<span class="nb-flag-fixed" title="Built-in rule">—</span></div>`;
+    return `${aiNote()}<div class="nb-fields">
+        <label class="nb-field"><span>Flag budgets below (USD)</span><input type="number" id="budgetMinInput" value="${b.min}" step="10000" min="0"></label>
+        <div class="nb-field"><span>Flag opportunities due within</span><div class="nb-fixed-input"><b>14</b><em>days</em></div><small>Fixed in the agent</small></div>
+      </div>
+      <div class="nb-sep"></div>
+      <section class="nb-block"><header class="nb-row-head"><div><h3>Review flags</h3><p>Kept visible, with a note for the reviewer. ${arr.filter(x=>x.enabled).length} of ${arr.length} on.</p></div></header>
+        <div class="nb-flag-table"><div class="nb-flag-cols"><span>Flag condition</span><span>Status</span><span></span></div>
+        ${fixedRow('Budget of $5M or more (capacity check)','id="budgetFlagLarge"',b.flagLarge,'code')}
+        ${fixedRow('French notice — send to human review','data-lang="frenchReview"',l.frenchReview,'ai')}
+        ${arr.map((item,i)=>[item,i]).slice(0,expanded.reviewFlags?arr.length:6).map(([item,i])=>{const src=flagSource(item.label);return `<div class="nb-flag-row ${item.enabled?'':'off'}"><span class="nb-flag-label"><input type="text" value="${esc(item.label)}" data-rename="${i}" data-key="reviewFlags" aria-label="Flag condition"><em class="nb-src ${src}">${src==='code'?'Code':'AI'}</em></span>${toggle(`data-toggle="${i}" data-key="reviewFlags"`,item.enabled)}<button type="button" class="nb-trash" data-remove="${i}" data-key="reviewFlags" aria-label="Delete ${esc(item.label)}">${ICON.trash}</button></div>`}).join('')}</div>
+        <div class="nb-block-foot">${arr.length>6?`<button type="button" class="nb-more" data-expand="reviewFlags">${expanded.reviewFlags?'Show fewer':`Show all ${arr.length}`}</button>`:'<span></span>'}${addControl('reviewFlags','Add another review flag','item')}</div></section>`;
+  }
+
+  function leftSources(){
+    const src=lastSearch&&lastSearch.sources, when=lastSearch&&lastSearch.searchedAt?new Date(lastSearch.searchedAt).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}):null;
+    return `<div class="nb-sources">${SOURCES.map(([k,name,what,how,logo],i)=>{const d=src&&src[k];const state=!d?'idle':d.ok?'ok':'down';return `<div class="nb-source ${state}" style="--i:${i}" title="${esc(how)}"><img src="assets/sources/${logo}" alt="" loading="lazy"><div><b>${name}</b><small>${what}</small></div><strong>${d?(d.ok?`<em data-count="${d.count}">0</em>notices`:'<em>—</em>unavailable'):'<em>—</em>not searched'}</strong></div>`}).join('')}</div>
+      <p class="nb-caption">${when?`Counts from the search of ${when}.`:'Counts appear after the next search.'} Sources are fixed; API keys live on the server.</p>
+      <div class="nb-sep"></div>
+      <section class="nb-block"><header class="nb-row-head"><div><h3>Monitoring rules</h3><p>Built into the agent.</p></div><em class="nb-tag">Fixed</em></header>
+      <ul class="nb-facts"><li><b>On demand</b>A search runs when someone presses Search now.</li><li><b>Closed notices</b>Dropped before scoring.</li><li><b>Duplicates</b>Merged across sources.</li><li><b>No date, or no year</b>Kept, shown as published.</li></ul></section>`;
+  }
+
   const knockoutSource=l=>CODE_KNOCKOUTS.includes(l)?'code':'ai';
   const flagSource=l=>CODE_FLAGS.includes(l)?'code':'ai';
   const aiNote=()=>aiScoring===false?`<p class="nb-warn">AI scoring is off on this server, so only rules marked <b>Code</b> apply right now.</p>`:'';
-
-  function leftFocus(){
-    return `${chips('focusAreas','Focus areas',{tag:'AI + fallback',tagTitle:'Used by the AI and by the keyword fallback scorer'})}
-      ${chips('activities','Activities Aceso delivers',{tag:'AI',tagTitle:'Used by the AI when it reads the notice'})}`;
-  }
-  function leftGeo(){
-    const l=criteriaState.languages;
-    return `${chips('regions','Priority regions',{tag:'Bonus',tagTitle:'Raises the score; never excludes'})}
-      <div class="nb-group"><div class="nb-group-head"><h4>Preferred funders<span>${FUNDER_GROUPS.reduce((s,[k])=>s+(criteriaState[k]||[]).length,0)}</span></h4><em class="nb-tag" title="Raises the score; never excludes">Bonus</em></div></div>
-      <div class="nb-funders">${FUNDER_GROUPS.map(([k,label])=>chips(k,label,{sub:true,empty:'None yet'})).join('')}</div>`;
-  }
-  function leftOut(){
-    const l=criteriaState.languages, lang=(k,label)=>`<label class="nb-check"><input type="checkbox" data-lang="${k}" ${l[k]?'checked':''}><span>${label}</span></label>`;
-    return `${aiNote()}${ruleList('knockouts',knockoutSource)}
-      <div class="nb-sep"></div><div class="nb-group-head"><h4>Languages Aceso delivers in</h4><em class="nb-tag">AI</em></div>
-      <div class="nb-langs">${lang('english','English')}${lang('spanish','Spanish')}${lang('portuguese','Portuguese')}</div>`;
-  }
-  function leftFlag(){
-    const b=criteriaState.budget,l=criteriaState.languages;
-    return `${aiNote()}<div class="nb-budget">
-        <label class="nb-field"><span>Flag budgets below (USD)</span><input type="number" id="budgetMinInput" value="${b.min}" step="10000" min="0"></label>
-        <div class="nb-fixed"><span>Tight deadline</span><b>Under 14 days</b><small>Fixed rule</small></div>
-      </div>
-      <label class="nb-rule nb-toggle-row ${b.flagLarge?'':'off'}"><input type="checkbox" id="budgetFlagLarge" ${b.flagLarge?'checked':''}><i class="nb-switch" aria-hidden="true"></i><span>Also flag budgets of $5M or more (capacity check)</span><em class="nb-src code">Code</em></label>
-      <label class="nb-rule nb-toggle-row ${l.frenchReview?'':'off'}"><input type="checkbox" data-lang="frenchReview" ${l.frenchReview?'checked':''}><i class="nb-switch" aria-hidden="true"></i><span>Send French notices to human review</span><em class="nb-src ai">AI</em></label>
-      <div class="nb-sep"></div><div class="nb-group-head"><h4>Review flags<span>${(criteriaState.reviewFlags||[]).filter(x=>x.enabled).length} on</span></h4></div>
-      ${ruleList('reviewFlags',flagSource)}`;
-  }
-  function leftSources(){
-    const src=lastSearch&&lastSearch.sources, when=lastSearch&&lastSearch.searchedAt?new Date(lastSearch.searchedAt).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}):null;
-    return `<div class="nb-sources">${SOURCES.map(([k,name,what,how],i)=>{const d=src&&src[k];const state=!d?'idle':d.ok?'ok':'down';return `<div class="nb-source ${state}" style="--i:${i}" title="${esc(how)}"><span class="src-dot"></span><b>${name}</b><small>${what}</small><strong>${d?(d.ok?`<em data-count="${d.count}">0</em> notices`:'Unavailable'):'—'}</strong></div>`}).join('')}</div>
-      <p class="nb-caption">${when?`Counts from the search of ${when}.`:'Counts appear after the next search.'} Sources are fixed; API keys live on the server.</p>
-      <div class="nb-sep"></div><div class="nb-group-head"><h4>Monitoring rules</h4><em class="nb-tag">Fixed</em></div>
-      <ul class="nb-facts"><li><b>On demand</b>A search runs only when someone presses Search now.</li><li><b>Closed notices</b>Dropped before scoring; they never appear.</li><li><b>Duplicates</b>Merged across sources.</li><li><b>No date, or no year</b>Kept, shown exactly as published.</li><li><b>Every search is saved</b>Results survive a reload.</li></ul>`;
-  }
 
   // ---- right-page explanations (one side at a time) -------------------------
   function lastSearchBox(){
@@ -193,21 +220,49 @@
   function resetSection(p){
     // "languages.x" resets one field, so pages sharing the languages object
     // (Excluded outright vs Kept, but flagged) don't reset each other.
-    p.reset.forEach(k=>{const [a,b]=k.split('.');if(b)criteriaState[a][b]=DEFAULT_CRITERIA_STATE[a][b];else criteriaState[a]=JSON.parse(JSON.stringify(DEFAULT_CRITERIA_STATE[a]))});saveCriteriaState();
+    p.reset.forEach(k=>{const [a,b]=k.split('.');if(b)criteriaState[a][b]=DEFAULT_CRITERIA_STATE[a][b];else criteriaState[a]=JSON.parse(JSON.stringify(DEFAULT_CRITERIA_STATE[a]));if(!b&&criteriaState.inactive)delete criteriaState.inactive[a]});saveCriteriaState();
   }
 
   function bindSettings(view){
     const changed=m=>{saveCriteriaState();say(m||'Saved. Applied on the next search.')};
+    const rowOf=el=>el.closest('.nb-box,.nb-flag-row');
+    const labelOf=x=>(typeof x==='string'?x:x.label).toLowerCase();
     qa('[data-remove]',view).forEach(btn=>btn.onclick=e=>{e.preventDefault();criteriaState[btn.dataset.key].splice(Number(btn.dataset.remove),1);changed();renderNotebook(false)});
-    qa('[data-toggle]',view).forEach(input=>input.onchange=()=>{criteriaState[input.dataset.key][Number(input.dataset.toggle)].enabled=input.checked;input.closest('.nb-rule')?.classList.toggle('off',!input.checked);changed(input.checked?'Rule on. Applied on the next search.':'Rule off. It stops on the next search.')});
+    // Plain lists: remove by value from whichever side (checked / unchecked) holds it.
+    qa('[data-drop]',view).forEach(btn=>btn.onclick=e=>{e.preventDefault();const k=btn.dataset.key,v=btn.dataset.drop,off=criteriaState.inactive[k]||[];criteriaState[k]=(criteriaState[k]||[]).filter(x=>x!==v);criteriaState.inactive[k]=off.filter(x=>x!==v);changed();renderNotebook(false)});
+    qa('[data-active]',view).forEach(input=>input.onchange=()=>{
+      const k=input.dataset.key,v=input.dataset.active,on=criteriaState[k]||[],off=criteriaState.inactive[k]||[];
+      // Re-checked items return to their default position (order sets the
+      // fallback scorer's theme tag); custom items stay at the end.
+      const rank=x=>{const i=(DEFAULT_CRITERIA_STATE[k]||[]).indexOf(x);return i<0?Infinity:i};
+      if(input.checked){criteriaState.inactive[k]=off.filter(x=>x!==v);if(!on.includes(v))on.push(v);criteriaState[k]=on.map((x,i)=>[x,i]).sort((p,q)=>(rank(p[0])-rank(q[0]))||(p[1]-q[1])).map(p=>p[0])}
+      else{criteriaState[k]=on.filter(x=>x!==v);if(!off.includes(v))off.push(v);criteriaState.inactive[k]=off}
+      rowOf(input)?.classList.toggle('off',!input.checked);changed(input.checked?'Back on. Applied on the next search.':'Off. The agent stops using it on the next search.');
+    });
+    qa('[data-toggle]',view).forEach(input=>input.onchange=()=>{criteriaState[input.dataset.key][Number(input.dataset.toggle)].enabled=input.checked;rowOf(input)?.classList.toggle('off',!input.checked);changed(input.checked?'Rule on. Applied on the next search.':'Rule off. It stops on the next search.')});
+    qa('[data-rename]',view).forEach(input=>input.onchange=()=>{
+      const list=criteriaState[input.dataset.key],i=Number(input.dataset.rename),val=input.value.trim();
+      if(!val||list.some((x,j)=>j!==i&&labelOf(x)===val.toLowerCase())){input.value=list[i].label;say(val?'Already in the list.':'A flag needs a name.');return}
+      list[i].label=val;changed('Flag renamed. Applied on the next search.');
+    });
+    qa('[data-add-open]',view).forEach(btn=>btn.onclick=()=>{adding[btn.dataset.addOpen]=true;renderNotebook(false);q(`.nb-add-inline[data-key="${btn.dataset.addOpen}"] input`,q('#criteriaView'))?.focus()});
+    qa('[data-add-close]',view).forEach(btn=>btn.onclick=()=>{adding[btn.dataset.addClose]=false;renderNotebook(false)});
     qa('.chip-add',view).forEach(form=>{
-      const key=form.dataset.key,mode=form.dataset.mode,input=form.querySelector('input');
-      const commit=()=>{const val=input.value.trim();if(!val)return;const list=criteriaState[key]||(criteriaState[key]=[]);const exists=list.some(x=>(typeof x==='string'?x:x.label).toLowerCase()===val.toLowerCase());if(exists){say('Already in the list.');return}list.push(mode==='chip'?val:{id:key+'-'+Date.now(),label:val,enabled:true});if(mode==='chip')expanded[key]=true;changed();renderNotebook(false)};
-      form.querySelector('button').onclick=commit;form.onsubmit=e=>{e.preventDefault();commit()};
+      const mode=form.dataset.mode,input=form.querySelector('input[type="text"]');
+      const commit=()=>{
+        const val=input.value.trim();if(!val)return;
+        const key=mode==='funder'?form.querySelector('select').value:form.dataset.key;
+        const list=criteriaState[key]||(criteriaState[key]=[]), off=criteriaState.inactive[key]||[];
+        if(list.some(x=>labelOf(x)===val.toLowerCase())||off.some(x=>x.toLowerCase()===val.toLowerCase())){say('Already in the list.');return}
+        list.push(mode==='item'?{id:key+'-'+Date.now(),label:val,enabled:true}:val);
+        adding[form.dataset.key]=false;expanded[key]=true;changed();renderNotebook(false);
+      };
+      form.querySelector('button:not(.nb-add-cancel)').onclick=commit;form.onsubmit=e=>{e.preventDefault();commit()};
+      input.onkeydown=e=>{if(e.key==='Escape'){adding[form.dataset.key]=false;renderNotebook(false)}};
     });
     const min=q('#budgetMinInput',view);if(min)min.onchange=e=>{criteriaState.budget.min=Math.max(0,Number(e.target.value)||0);changed(`Budget flag set below ${fmtUSD(criteriaState.budget.min)}.`)};
-    const large=q('#budgetFlagLarge',view);if(large)large.onchange=e=>{criteriaState.budget.flagLarge=e.target.checked;e.target.closest('.nb-rule')?.classList.toggle('off',!e.target.checked);changed()};
-    qa('[data-lang]',view).forEach(input=>input.onchange=()=>{criteriaState.languages[input.dataset.lang]=input.checked;input.closest('.nb-rule')?.classList.toggle('off',!input.checked);changed()});
+    const large=q('#budgetFlagLarge',view);if(large)large.onchange=e=>{criteriaState.budget.flagLarge=e.target.checked;rowOf(e.target)?.classList.toggle('off',!e.target.checked);changed()};
+    qa('[data-lang]',view).forEach(input=>input.onchange=()=>{criteriaState.languages[input.dataset.lang]=input.checked;rowOf(input)?.classList.toggle('off',!input.checked);changed()});
     qa('[data-expand]',view).forEach(btn=>btn.onclick=()=>{expanded[btn.dataset.expand]=!expanded[btn.dataset.expand];renderNotebook(false)});
     qa('[data-side]',view).forEach(btn=>btn.onclick=()=>{side=btn.dataset.side;renderNotebook(false)});
   }
