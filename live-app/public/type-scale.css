@@ -1,0 +1,45 @@
+/* ======================================================================
+   Type scale — three sizes for the whole app. Loaded last on purpose so it
+   overrides the many per-screen sizes that accumulated over time.
+
+   S  13px  everything by default: body copy, labels, buttons, tables,
+            chips, chart labels (SVG charts are drawn ~1:1, so this is the
+            on-screen size too)
+   M  20px  section and card titles (h2, h3) and key figures (KPIs, %)
+   L  34px  page titles (h1) and the headline figure on the home screen
+
+   To add text at a new size, pick one of these three tokens instead.
+   ====================================================================== */
+:root{--fs-s:13px;--fs-m:20px;--fs-l:34px}
+
+/* S — the floor. Nothing in the app renders smaller than this. */
+body,body *{font-size:var(--fs-s)!important}
+
+/* M — section / card titles */
+body h2,body h2 *,body h3,body h3 *{font-size:var(--fs-m)!important}
+
+/* M — key figures */
+.today-impact b,
+.fit-box strong,
+.unified-fit b,
+.drawer-fit b,
+.hero-score b,
+.pw-readiness b,
+.pw-compliance-score b,
+#pipelineMetrics b,
+.stage-score,
+.executive-kpis b,
+.financial-preview b,
+.world-stats b,
+.hours-kpis b,
+.insight-foot b,
+.dq-headline>b,
+.experience-intro>span>b,
+.talent-project-count>b,
+.nb-source strong em,
+svg .viz-donut-total,
+svg .dr-pct{font-size:var(--fs-m)!important}
+
+/* L — page titles and the home headline figure */
+body h1,body h1 *,
+.pw-hero h2{font-size:var(--fs-l)!important}
