@@ -10,6 +10,7 @@ const { searchUnitaid } = require('./connectors/unitaid');
 const { searchUndp } = require('./connectors/undp');
 const { searchUngm } = require('./connectors/ungm');
 const { evaluateOpportunity, buildCopilotPrompt } = require('./lib/scoring');
+const { buildPlanPrompt, buildCompliancePrompt } = require('./lib/proposal');
 const { dedupe } = require('./lib/dedupe');
 const { hasGeminiKey, callGemini } = require('./lib/gemini');
 const { closeBrowser } = require('./lib/browser');
@@ -61,6 +62,26 @@ app.post('/api/copilot', async (req, res) => {
   } catch (err) {
     console.error(`[copilot] failed: ${err.message}`);
     res.status(500).json({ error: `Copilot couldn't answer right now: ${err.message}` });
+  }
+});
+
+// On-demand proposal assistance for one opportunity record. Called only when
+// a person presses "Generate" — the page never triggers it on its own.
+app.post('/api/proposal-assist', async (req, res) => {
+  const mode = req.body?.mode;
+  const payload = req.body?.payload || {};
+  if (mode !== 'plan' && mode !== 'compliance') return res.status(400).json({ error: 'Unknown assist mode.' });
+  if (!payload.opportunity || !payload.opportunity.title) return res.status(400).json({ error: 'Opportunity is required.' });
+  if (!hasGeminiKey()) return res.json({ result: null, error: 'Gemini is not configured, so AI assistance is unavailable right now.' });
+  try {
+    const prompt = mode === 'plan' ? buildPlanPrompt(payload) : buildCompliancePrompt(payload);
+    const raw = await callGemini(prompt, { timeoutMs: 45000, maxOutputTokens: 2048 });
+    // Gemini sometimes returns the bare list instead of the wrapping object.
+    const result = Array.isArray(raw) ? (mode === 'plan' ? { sections: raw } : { requirements: raw }) : raw;
+    res.json({ result, generatedAt: new Date().toISOString() });
+  } catch (err) {
+    console.error(`[proposal-assist] ${mode} failed: ${err.message}`);
+    res.status(500).json({ error: `AI assistance failed: ${err.message}` });
   }
 });
 
