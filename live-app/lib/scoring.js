@@ -3,12 +3,25 @@ const { DEFAULT_CRITERIA } = require('./criteria');
 
 function parseBudgetNumber(value) {
   if (!value || typeof value !== 'string') return null;
-  const match = value.replace(/,/g, '').match(/\$?([0-9.]+)\s*(M|K)?/i);
+  const text = value.replace(/,/g, '');
+  const match = text.match(/\$?\s*([0-9]+(?:\.[0-9]+)?)(?:\s*(?:-|–|to)\s*\$?\s*([0-9]+(?:\.[0-9]+)?))?\s*(billion|million|thousand|bn|m|k)?(?![a-z])/i);
   if (!match) return null;
-  const n = Number(match[1]);
-  if (Number.isNaN(n)) return null;
-  const mult = /M/i.test(match[2] || '') ? 1e6 : /K/i.test(match[2] || '') ? 1e3 : 1;
-  return n * mult;
+  const low = Number(match[1]);
+  const high = match[2] ? Number(match[2]) : low;
+  const unit = (match[3] || '').toLowerCase();
+  const mult = unit === 'billion' || unit === 'bn' ? 1e9 : unit === 'million' || unit === 'm' ? 1e6 : unit === 'thousand' || unit === 'k' ? 1e3 : 1;
+  // For a range ("$10-30 million") the ceiling is what counts against a minimum.
+  return Math.max(low, high) * mult;
+}
+
+// The two budget flags are derived from the parsed value, so they are always
+// recomputed from it — Gemini's own flags or a stale saved result can't
+// contradict what the table shows.
+function reconcileBudgetFlags(flags, value, min = DEFAULT_CRITERIA.budget.min) {
+  const rest = (flags || []).filter(f => f !== 'Budget not published' && f !== 'Clearly insufficient budget');
+  if (!value || value === 'Not disclosed') return [...rest, 'Budget not published'];
+  const amount = parseBudgetNumber(value);
+  return amount != null && amount < min ? [...rest, 'Clearly insufficient budget'] : rest;
 }
 
 function fitTierFor(score, disqualified) {
@@ -230,8 +243,7 @@ async function evaluateOpportunity(opp, criteria) {
   // The parsed opp.value is the ground truth for this specific flag, so
   // it always wins over whatever Gemini said.
   let reviewFlags = Array.from(new Set([...(evaluation.reviewFlags || []), ...knockout.flags]));
-  const hasPublishedBudget = opp.value && opp.value !== 'Not disclosed';
-  if (hasPublishedBudget) reviewFlags = reviewFlags.filter(f => f !== 'Budget not published');
+  reviewFlags = reconcileBudgetFlags(reviewFlags, opp.value, criteria?.budget?.min ?? DEFAULT_CRITERIA.budget.min);
   const fitTier = fitTierFor(evaluation.score, false);
 
   return { ...evaluation, fitTier, reviewFlags, knockedOut: false, usedGemini };
@@ -250,4 +262,4 @@ QUESTION: ${question}
 Return ONLY this JSON shape (no prose, no markdown fences): {"answer": "<your answer>"}`;
 }
 
-module.exports = { evaluateOpportunity, buildCoefficientPrompt, buildCopilotPrompt, runKnockouts, parseBudgetNumber };
+module.exports = { evaluateOpportunity, buildCoefficientPrompt, buildCopilotPrompt, runKnockouts, parseBudgetNumber, reconcileBudgetFlags };

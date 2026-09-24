@@ -1,4 +1,18 @@
 const { getDb, hasFirebaseConfig } = require('./firebase');
+const { reconcileBudgetFlags } = require('./scoring');
+
+// Searches saved before a scoring fix keep whatever flags they were stored
+// with; re-derive the budget flags from each result's value on the way out
+// so an old record can never show "Budget not published" next to a real value.
+function withReconciledFlags(record) {
+  if (!record || !Array.isArray(record.results)) return record;
+  return {
+    ...record,
+    results: record.results.map((o) => (o && o.meta
+      ? { ...o, meta: { ...o.meta, reviewFlags: reconcileBudgetFlags(o.meta.reviewFlags, o.value) } }
+      : o))
+  };
+}
 
 const COLLECTION = 'searches';
 
@@ -45,7 +59,7 @@ async function getLatestSearch() {
   const snap = await db.collection(COLLECTION).orderBy('searchedAt', 'desc').limit(1).get();
   if (snap.empty) return null;
   const doc = snap.docs[0];
-  return { id: doc.id, ...doc.data() };
+  return withReconciledFlags({ id: doc.id, ...doc.data() });
 }
 
 async function getSearchById(id) {
@@ -53,7 +67,7 @@ async function getSearchById(id) {
   const db = getDb();
   const doc = await db.collection(COLLECTION).doc(id).get();
   if (!doc.exists) return null;
-  return { id: doc.id, ...doc.data() };
+  return withReconciledFlags({ id: doc.id, ...doc.data() });
 }
 
 module.exports = { saveSearch, listSearches, getSearchById, getLatestSearch };
