@@ -9,37 +9,58 @@
    L  34px  page titles (h1) and the headline figure on the home screen
 
    To add text at a new size, pick one of these three tokens instead.
+
+   Each rule is wrapped in :is(…, #_ts#_ts#_ts). That id never exists; it
+   only lifts the rule's specificity to (3,0,0) so the scale wins over older
+   per-screen rules that also use !important. Later rules (M, then L) win
+   over earlier ones at equal specificity.
    ====================================================================== */
 :root{--fs-s:13px;--fs-m:20px;--fs-l:34px}
 
 /* S — the floor. Nothing in the app renders smaller than this. */
-body,body *{font-size:var(--fs-s)!important}
+:is(body,body *,#_ts#_ts#_ts){font-size:var(--fs-s)!important}
 
-/* M — section / card titles */
-body h2,body h2 *,body h3,body h3 *{font-size:var(--fs-m)!important}
-
-/* M — key figures */
-.today-impact b,
-.fit-box strong,
-.unified-fit b,
-.drawer-fit b,
-.hero-score b,
-.pw-readiness b,
-.pw-compliance-score b,
-#pipelineMetrics b,
-.stage-score,
-.executive-kpis b,
-.financial-preview b,
-.world-stats b,
-.hours-kpis b,
-.insight-foot b,
-.dq-headline>b,
-.experience-intro>span>b,
-.talent-project-count>b,
-.nb-source strong em,
-svg .viz-donut-total,
-svg .dr-pct{font-size:var(--fs-m)!important}
+/* M — section / card titles and key figures */
+:is(
+  h2,h2 *,h3,h3 *,
+  .today-impact b,
+  .fit-box strong,
+  .unified-fit b,
+  .drawer-fit b,
+  .hero-score b,
+  .pw-readiness b,
+  .pw-compliance-score b,
+  #pipelineMetrics b,
+  .stage-score,
+  .executive-kpis b,
+  .financial-preview b,
+  .world-stats b,
+  .hours-kpis b,
+  .insight-foot b,
+  .dq-headline>b,
+  .experience-intro>span>b,
+  .talent-project-count>b,
+  .nb-source strong em,
+  svg .viz-donut-total,
+  svg .dr-pct,
+  #_ts#_ts#_ts){font-size:var(--fs-m)!important}
 
 /* L — page titles and the home headline figure */
-body h1,body h1 *,
-.pw-hero h2{font-size:var(--fs-l)!important}
+:is(h1,h1 *,.pw-hero h2,#_ts#_ts#_ts){font-size:var(--fs-l)!important}
+
+/* Donut and ring SVGs render at their drawing size, so their text is
+   exactly S / M on screen rather than scaled down. */
+#dashboardView .dcard svg.viz-donut{width:180px!important;height:180px!important}
+#dashboardView .dcard svg.dr-ring{width:140px!important;height:140px!important}
+#dashboardView .dr-readiness{grid-template-columns:140px 1fr!important}
+
+/* Text that now runs longer at 13px wraps to a second line instead of
+   being cut off with an ellipsis. */
+#knowledgeContent .branch-people b,#knowledgeContent .branch-people small,
+#knowledgeContent .branch-project small,
+#dashboardView .viz-bar-label,#dashboardView .ins-funders li>span,
+.doc-tile small{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.25}
+#knowledgeContent .branch-people>button{height:auto!important;min-height:44px}
+
+/* Pre-existing: the Opportunities header was 40px wider than a phone screen. */
+#opportunitiesView .opportunities-master-head{box-sizing:border-box;max-width:100%}
