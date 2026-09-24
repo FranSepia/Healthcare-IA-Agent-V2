@@ -99,6 +99,8 @@ function heuristicEvaluate(opp, criteria) {
   let score = 42 + Math.min(48, matched.length * 14);
   const funders = [...(criteria?.fundersMDB || DEFAULT_CRITERIA.fundersMDB), ...(criteria?.fundersGov || DEFAULT_CRITERIA.fundersGov), ...(criteria?.fundersUS || DEFAULT_CRITERIA.fundersUS)];
   if (funders.some(f => (opp.org || '').toLowerCase().includes(f.toLowerCase()))) score += 8;
+  const keywords = Array.isArray(criteria?.keywords) ? criteria.keywords : DEFAULT_CRITERIA.keywords;
+  score += Math.min(9, 3 * keywords.filter(k => k && text.includes(String(k).toLowerCase())).length);
   score = Math.min(96, score);
   return {
     score,
@@ -116,7 +118,10 @@ function heuristicEvaluate(opp, criteria) {
 function buildPrompt(opp, criteria) {
   const c = { ...DEFAULT_CRITERIA, ...criteria };
   const lang = { ...DEFAULT_CRITERIA.languages, ...(criteria?.languages || {}) };
-  const accepted = [lang.english && 'English', lang.spanish && 'Spanish', lang.portuguese && 'Portuguese'].filter(Boolean);
+  const extra = Array.isArray(criteria?.extraLanguages) ? criteria.extraLanguages : DEFAULT_CRITERIA.extraLanguages;
+  const accepted = [lang.english && 'English', lang.spanish && 'Spanish', lang.portuguese && 'Portuguese', ...extra].filter(Boolean);
+  const keywords = Array.isArray(criteria?.keywords) ? criteria.keywords : DEFAULT_CRITERIA.keywords;
+  const deadlineDays = Math.max(1, Number(criteria?.deadlineDays) || DEFAULT_CRITERIA.deadlineDays);
   const knockouts = activeLabels(criteria?.knockouts, DEFAULT_CRITERIA.knockouts);
   const flagOptions = activeLabels(criteria?.reviewFlags, DEFAULT_CRITERIA.reviewFlags).filter(f => f !== 'Budget not published');
   const funders = [...c.fundersMDB, ...(c.fundersPhilanthropic || []), ...c.fundersGov, ...c.fundersUS].filter(f => !/add specific names/i.test(f));
@@ -127,6 +132,7 @@ Focus areas: ${c.focusAreas.join('; ')}
 Relevant activities: ${c.activities.join('; ')}
 Priority regions (bonus, not required): ${c.regions.join('; ')}
 Preferred funders (bonus signal): ${funders.join('; ')}
+Priority keywords (a match raises relevance, but never overrides the actual deliverables or applicant type): ${keywords.join('; ') || 'none'}
 Preferred minimum budget: $${c.budget.min.toLocaleString('en-US')} USD (a soft review threshold, not an automatic rejection)
 Accepted languages: ${accepted.join(', ') || 'none configured'} outright; French ${lang.frenchReview ? 'is never auto-accepted or auto-rejected — score it normally and add the review flag "French — human review"' : 'is not accepted'}; anything else is usually low fit.
 
@@ -136,7 +142,7 @@ Funder/organization: ${opp.org}
 Country/region: ${opp.country}
 Type: ${opp.type}
 Value: ${opp.value}
-Deadline: ${opp.due} (today is ${new Date().toISOString().slice(0, 10)}; add the "Tight submission deadline" flag if it is less than 14 days away)
+Deadline: ${opp.due} (today is ${new Date().toISOString().slice(0, 10)}; add the "Tight submission deadline" flag if it is less than ${deadlineDays} days away)
 Source: ${opp.source}
 Description / notice text (may be partial): ${(opp.raw?.description || '').slice(0, 3000)}
 

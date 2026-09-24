@@ -13,6 +13,14 @@ const DEFAULT_CRITERIA = {
   fundersUS: ['CDC', 'U.S. Department of State'],
   budget: { min: 200000, flagLarge: true },
   languages: { english: true, spanish: true, portuguese: true, frenchReview: true },
+  // Accepted outright in addition to the three above (added on the Criteria page).
+  extraLanguages: [],
+  // Terms that raise relevance when present; never override deliverables or applicant type.
+  keywords: ['Health financing', 'Provider payment', 'Universal health coverage', 'Primary health care', 'Health system strengthening'],
+  // A notice closing in fewer days than this gets the "Tight submission deadline" flag.
+  deadlineDays: 14,
+  // Sources switched off on the Criteria page are not queried at all.
+  sources: { grantsGov: true, worldBank: true, coefficientGiving: true, unitaid: true, undp: true, ungm: true },
   // Budget is a soft threshold (a review flag, never an exclusion) and closed
   // notices are dropped in server.js before scoring, so neither is listed here.
   knockouts: [

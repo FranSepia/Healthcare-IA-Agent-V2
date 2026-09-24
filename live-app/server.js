@@ -23,7 +23,9 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Runs one connector, never lets a single source's failure break the whole search.
-async function safeRun(label, fn) {
+async function safeRun(label, fn, enabled = true) {
+  // Switched off on the Criteria page: not queried at all.
+  if (!enabled) return { label, ok: true, skipped: true, count: 0, ms: 0, items: [] };
   const startedAt = Date.now();
   try {
     const items = await fn();
@@ -65,14 +67,15 @@ app.post('/api/copilot', async (req, res) => {
 app.post('/api/search', async (req, res) => {
   const keyword = (req.body?.keyword || 'health systems').trim() || 'health systems';
   const criteria = req.body?.criteria || null;
+  const on = key => criteria?.sources?.[key] !== false;
 
   const [grantsGov, worldBank, coefficientGiving, unitaid, undp, ungm] = await Promise.all([
-    safeRun('Grants.gov', () => searchGrantsGov({ keyword })),
-    safeRun('World Bank', () => searchWorldBank({ keyword })),
-    safeRun('Coefficient Giving', () => searchCoefficientGiving({})),
-    safeRun('Unitaid', () => searchUnitaid()),
-    safeRun('UNDP', () => searchUndp({ keyword })),
-    safeRun('UNGM', () => searchUngm({ keyword }))
+    safeRun('Grants.gov', () => searchGrantsGov({ keyword }), on('grantsGov')),
+    safeRun('World Bank', () => searchWorldBank({ keyword }), on('worldBank')),
+    safeRun('Coefficient Giving', () => searchCoefficientGiving({}), on('coefficientGiving')),
+    safeRun('Unitaid', () => searchUnitaid(), on('unitaid')),
+    safeRun('UNDP', () => searchUndp({ keyword }), on('undp')),
+    safeRun('UNGM', () => searchUngm({ keyword }), on('ungm'))
   ]);
 
   const rawOpportunities = [...grantsGov.items, ...worldBank.items, ...coefficientGiving.items, ...unitaid.items, ...undp.items, ...ungm.items];
@@ -141,12 +144,12 @@ app.post('/api/search', async (req, res) => {
     keyword,
     geminiConfigured: hasGeminiKey(),
     sources: {
-      grantsGov: { ok: grantsGov.ok, count: grantsGov.count, ms: grantsGov.ms, error: grantsGov.error || null },
-      worldBank: { ok: worldBank.ok, count: worldBank.count, ms: worldBank.ms, error: worldBank.error || null },
-      coefficientGiving: { ok: coefficientGiving.ok, count: coefficientGiving.count, ms: coefficientGiving.ms, error: coefficientGiving.error || null },
-      unitaid: { ok: unitaid.ok, count: unitaid.count, ms: unitaid.ms, error: unitaid.error || null },
-      undp: { ok: undp.ok, count: undp.count, ms: undp.ms, error: undp.error || null },
-      ungm: { ok: ungm.ok, count: ungm.count, ms: ungm.ms, error: ungm.error || null }
+      grantsGov: { ok: grantsGov.ok, count: grantsGov.count, ms: grantsGov.ms, error: grantsGov.error || null, skipped: Boolean(grantsGov.skipped) },
+      worldBank: { ok: worldBank.ok, count: worldBank.count, ms: worldBank.ms, error: worldBank.error || null, skipped: Boolean(worldBank.skipped) },
+      coefficientGiving: { ok: coefficientGiving.ok, count: coefficientGiving.count, ms: coefficientGiving.ms, error: coefficientGiving.error || null, skipped: Boolean(coefficientGiving.skipped) },
+      unitaid: { ok: unitaid.ok, count: unitaid.count, ms: unitaid.ms, error: unitaid.error || null, skipped: Boolean(unitaid.skipped) },
+      undp: { ok: undp.ok, count: undp.count, ms: undp.ms, error: undp.error || null, skipped: Boolean(undp.skipped) },
+      ungm: { ok: ungm.ok, count: ungm.count, ms: ungm.ms, error: ungm.error || null, skipped: Boolean(ungm.skipped) }
     },
     results: evaluated
   };
