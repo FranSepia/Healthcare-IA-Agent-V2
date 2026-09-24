@@ -65,7 +65,7 @@
   .pw-readiness b,.pw-compliance-score b,#pipelineMetrics b,.stage-score,
   .executive-kpis b,.financial-preview b,.world-stats b,.hours-kpis b,
   .insight-foot b,.dq-headline>b,.experience-intro>span>b,.talent-project-count>b,
-  .nb-source strong em,.simple-fig,
+  .nb-source strong em,.simple-fig,svg .dr-pct,svg .viz-donut-total,
   #_ts#_ts#_ts){font-family:var(--sans)!important;font-weight:600!important;letter-spacing:-.01em!important}
 svg text{font-family:var(--sans)!important}
 
