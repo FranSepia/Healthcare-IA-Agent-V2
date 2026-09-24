@@ -92,40 +92,21 @@
     };
   }
 
+  // Themed chart sections are composed by dashboard-layout.js into #dashSections.
   function roiDashboardHTML(){
-    const all=records;
-    const bySource={};all.forEach(o=>{bySource[o.source]=(bySource[o.source]||0)+1});
-    const byRegion={};all.forEach(o=>{byRegion[o.country]=(byRegion[o.country]||0)+1});
-    const byPillar={};all.forEach(o=>{byPillar[o.pillar]=(byPillar[o.pillar]||0)+1});
-    const newCount=all.filter(o=>o.meta&&o.meta.dupStatus==='New').length;
-    const repeatedCount=all.filter(o=>o.meta&&(o.meta.dupStatus==='Repeated'||o.meta.dupStatus==='Updated')).length;
-    const dupCount=all.filter(o=>o.meta&&o.meta.dupStatus==='Possible Duplicate').length;
-    const relevant=typeof activeOpportunities==='function'?activeOpportunities().length:all.length;
-    const potentialValue=all.reduce((sum,o)=>{const match=/\$([0-9.]+)\s?(million|M|thousand|K)\b/i.exec(o.value||'');if(!match)return sum;const unit=match[2].toLowerCase();const mult=unit==='million'||unit==='m'?1e6:unit==='thousand'||unit==='k'?1e3:1;return sum+Number(match[1])*mult},0);
-    const fmt=n=>n>=1e6?`$${(n/1e6).toFixed(1)}M`:n>=1e3?`$${Math.round(n/1e3)}K`:`$${n}`;
-    const rankList=obj=>Object.entries(obj).map(([k,v],i)=>`<div><b>${i+1}</b><span>${escapeHtml(k)}</span><em>${v}</em><i style="--w:${Math.round(v/all.length*100)}%"></i></div>`).join('');
-    return `<section class="roi-section page-shell"><div class="section-title"><div><p class="eyebrow">SEARCH RESULTS SUMMARY</p><h2>What this search found</h2><p>Computed live from the current search results.</p></div></div>
-      <div class="roi-kpi-row">
-        <div><small>Total opportunities found</small><b>${all.length}</b></div>
-        <div><small>Relevant opportunities</small><b>${relevant}</b></div>
-        <div><small>New</small><b>${newCount}</b></div>
-        <div><small>Repeated</small><b>${repeatedCount}</b></div>
-        <div><small>Possible duplicates</small><b>${dupCount}</b></div>
-        <div><small>Potential value (published)</small><b>${fmt(potentialValue)}</b></div>
-      </div>
-      <div id="dashboardExtraCharts" class="dashboard-charts-grid"></div>
-      <div class="security-note"><span>🔒</span><div><b>Security note</b>No DevelopmentAid or Grants.gov credential is stored in this interface, its code or the repository — connection keys live in backend environment variables only.</div></div>
-    </section>`;
+    return `<div id="dashSections" class="dash-sections"></div>
+      <div class="security-note"><span>🔒</span><div><b>Security note</b>No DevelopmentAid or Grants.gov credential is stored in this interface, its code or the repository — connection keys live in backend environment variables only.</div></div>`;
   }
 
   function rebuildDashboard(){
     const view=q('#dashboardView');if(!view)return;
     const relevantCount=typeof activeOpportunities==='function'?activeOpportunities().length:records.length;
     const discardedCount=(typeof discarded!=='undefined'?discarded:[]).length;
+    const newCount=records.filter(o=>o.meta&&o.meta.dupStatus==='New').length,repeatedCount=records.filter(o=>o.meta&&(o.meta.dupStatus==='Repeated'||o.meta.dupStatus==='Updated')).length,dupCount=records.filter(o=>o.meta&&o.meta.dupStatus==='Possible Duplicate').length;
     const potentialValue=records.reduce((sum,o)=>{const match=/\$([0-9.]+)\s?(million|M|thousand|K)\b/i.exec(o.value||'');if(!match)return sum;const unit=match[2].toLowerCase();const mult=unit==='million'||unit==='m'?1e6:unit==='thousand'||unit==='k'?1e3:1;return sum+Number(match[1])*mult},0);
     const fmtValue=n=>n>=1e6?`$${(n/1e6).toFixed(1)}M`:n>=1e3?`$${Math.round(n/1e3)}K`:`$${n}`;
     const updatedAt=new Date().toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'});
-    view.innerHTML=`<section class="dashboard-title-row"><div><p class="eyebrow">BUSINESS DEVELOPMENT INTELLIGENCE</p><h1>Global Health Opportunities Dashboard</h1><p>Computed live from the current search results.</p></div><div><small>Last updated <b>${updatedAt}</b></small></div></section><section class="executive-kpis">${[['◎','OPPORTUNITIES IDENTIFIED',String(records.length),'from this search'],['▤','RELEVANT',String(relevantCount),'passed all screening rules'],['✕','DISCARDED',String(discardedCount),'excluded with a traceable reason'],['◉','POTENTIAL VALUE',fmtValue(potentialValue),'sum of published budgets']].map(x=>`<article><i>${x[0]}</i><span><small>${x[1]}</small><b>${x[2]}</b><p>${x[3]}</p></span></article>`).join('')}</section><section class="dashboard-detail-grid single"><aside class="dashboard-copilot"><p class="eyebrow">✦ &nbsp; ACESO COPILOT</p><h2>Ask anything about global health opportunities.</h2>${['Which regions have the most opportunities?','Show upcoming deadlines this quarter','What are our top sources by value?'].map(x=>`<button>${x}<b>→</b></button>`).join('')}<label><input placeholder="Ask a question..."><button>→</button></label><div class="copilot-answer" hidden></div></aside></section>`;
+    view.innerHTML=`<section class="dashboard-title-row"><div><p class="eyebrow">BUSINESS DEVELOPMENT INTELLIGENCE</p><h1>Global Health Opportunities Dashboard</h1><p>Computed live from the current search results.</p></div><div><small>Last updated <b>${updatedAt}</b></small></div></section><section class="executive-kpis">${[['◎','SCREENED',String(records.length+discardedCount),'notices found this search'],['▤','RELEVANT',String(relevantCount),'passed all screening rules'],['✕','DISCARDED',String(discardedCount),'excluded with a traceable reason'],['✦','NEW',String(newCount),'first seen in this search'],['↻','REPEATED',String(repeatedCount),`${dupCount} possible duplicate${dupCount===1?'':'s'}`],['◉','POTENTIAL VALUE',fmtValue(potentialValue),'sum of published budgets']].map(x=>`<article><i>${x[0]}</i><span><small>${x[1]}</small><b>${x[2]}</b><p>${x[3]}</p></span></article>`).join('')}</section><section class="dashboard-detail-grid single"><aside class="dashboard-copilot"><p class="eyebrow">✦ &nbsp; ACESO COPILOT</p><h2>Ask anything about global health opportunities.</h2>${['Which regions have the most opportunities?','Show upcoming deadlines this quarter','What are our top sources by value?'].map(x=>`<button>${x}<b>→</b></button>`).join('')}<label><input placeholder="Ask a question..."><button>→</button></label><div class="copilot-answer" hidden></div></aside></section>`;
     const kpis=q('.executive-kpis',view);if(kpis)kpis.insertAdjacentHTML('afterend',`<section class="dashboard-world"><div class="world-orbit" data-interactive-globe><svg role="img" aria-label="Interactive globe showing Aceso opportunity activity. Drag to rotate and select an illuminated country."></svg><span class="globe-instruction">Drag to explore</span></div><div><p class="eyebrow">GLOBAL OPPORTUNITY RADAR</p><h2>Activity across <span data-globe-country-count>0</span> countries</h2><p>Live results from this search's six sources. Brighter points indicate a higher concentration of relevant notices.</p><div class="world-stats" data-globe-top-countries><span><b>0</b>Running the first search…</span></div></div></section>`);
     if(typeof window.refreshGlobeActivity==='function')window.refreshGlobeActivity();
     view.insertAdjacentHTML('beforeend',roiDashboardHTML());
@@ -136,28 +117,44 @@
     bindCopilot(view);
   }
 
+  // Everything Copilot can see: the screen the user is on, every opportunity,
+  // the numbers behind every chart, the Knowledge Base and the criteria.
+  // Ordered most-important-first so a size cap never drops the core data.
   function buildCopilotContext(){
     const all=typeof records!=='undefined'?records:(typeof opportunities!=='undefined'?opportunities:[]);
     const discardedList=typeof discarded!=='undefined'?discarded:[];
     const today=new Date().toISOString().slice(0,10);
     const toISO=text=>{const t=Date.parse(text||'');return Number.isNaN(t)?null:new Date(t).toISOString().slice(0,10)};
     const tally=(list,key)=>list.reduce((acc,x)=>{const k=key(x);if(k)acc[k]=(acc[k]||0)+1;return acc},{});
-    const opps=all.slice().sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,60).map(o=>({title:o.title,org:o.org,country:o.country,source:o.source,theme:o.pillar,fitScore:o.score,value:o.value,deadlineAsPublished:o.due,deadlineISO:toISO(o.due),agentStatus:o.status,reviewState:o.state,rfpStatus:o.rfpStatus||undefined}));
+    const safe=fn=>{try{return fn()}catch(e){return null}};
+    const clip=(text,n)=>{const s=String(text||'').replace(/\s+/g,' ').trim();return s.length>n?s.slice(0,n)+'…':s};
+    const opps=all.slice().sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,60).map(o=>({title:o.title,org:o.org,country:o.country,source:o.source,type:o.type,theme:o.pillar,fitScore:o.score,fitTier:o.meta&&o.meta.fitTier,value:o.value,deadlineAsPublished:o.due,deadlineISO:toISO(o.due),agentStatus:o.status,reviewState:o.state,rfpStatus:o.rfpStatus||undefined,reviewFlags:o.meta&&o.meta.reviewFlags,keywords:o.meta&&o.meta.keywords,whyItFits:clip(o.meta&&o.meta.explanation,320)||undefined,duplicateStatus:o.meta&&o.meta.dupStatus,sourceUrl:o.sourceUrl}));
     const upcomingDeadlines=opps.filter(o=>o.deadlineISO&&o.deadlineISO>=today).sort((a,b)=>a.deadlineISO.localeCompare(b.deadlineISO)).map(o=>({title:o.title,org:o.org,deadlineISO:o.deadlineISO,fitScore:o.fitScore,agentStatus:o.agentStatus}));
     const deadlineUnclear=opps.filter(o=>!o.deadlineISO).map(o=>({title:o.title,deadlineAsPublished:o.deadlineAsPublished}));
     const pipeline=typeof window.pipelineStats==='function'?window.pipelineStats():null;
+    const potentialValue=all.reduce((sum,o)=>{const match=/\$([0-9.]+)\s?(million|M|thousand|K)\b/i.exec(o.value||'');if(!match)return sum;const unit=match[2].toLowerCase();const mult=unit==='million'||unit==='m'?1e6:unit==='thousand'||unit==='k'?1e3:1;return sum+Number(match[1])*mult},0);
+    const activeView=q('.view.active');
+    const navLabel=activeView?(q(`.navlinks button[data-view="${activeView.dataset.page}"]`)||{}).textContent:null;
+    const criteria=safe(()=>JSON.parse(localStorage.getItem('aceso_criteria_state_v2')||'null'));
     return {
       today,
+      currentScreen: activeView ? { screen: (navLabel||activeView.dataset.page||activeView.id||'').trim(), openOpportunity: window.selectedOpp&&window.selectedOpp.title&&activeView.id==='detailView'?window.selectedOpp.title:undefined, visibleText: clip(activeView.innerText,6000) } : null,
       totalOpportunitiesFound: all.length+discardedList.length,
       relevantOpportunities: all.length,
       discardedCount: discardedList.length,
       discardReasons: tally(discardedList,d=>d&&d[3]),
       byResultsSource: tally(all,o=>o.source), byCountry: tally(all,o=>o.country), byTheme: tally(all,o=>o.pillar),
       agentStatusCounts: tally(all,o=>o.status),
+      dashboardKpis: { where: 'Top of the Dashboard and the "What this search found" summary', screened: all.length+discardedList.length, relevant: all.length, discarded: discardedList.length, potentialValuePublished: potentialValue, newThisSearch: all.filter(o=>o.meta&&o.meta.dupStatus==='New').length, repeated: all.filter(o=>o.meta&&(o.meta.dupStatus==='Repeated'||o.meta.dupStatus==='Updated')).length, possibleDuplicates: all.filter(o=>o.meta&&o.meta.dupStatus==='Possible Duplicate').length, globe: 'The globe ("Activity across N countries") plots one point per country in byCountry; brighter = more relevant notices.', financialIndicators: 'The "Financial indicators" card is restricted by role; its values are intentionally hidden (••) and Copilot does not have them.' },
       allRelevantOpportunities: opps,
       upcomingDeadlinesSoonestFirst: upcomingDeadlines,
       opportunitiesWithoutClearDeadline: deadlineUnclear,
-      examplePipeline: pipeline ? { note: 'This is illustrative example data for demos, not a real live pipeline.', stageOrder: pipeline.stages, stageCounts: pipeline.counts, totalPipelineValue: pipeline.fmtValue(pipeline.totalValue), proposals: pipeline.items } : null
+      dashboardInsights: safe(()=>window.dashboardInsightData&&window.dashboardInsightData()),
+      dashboardCharts: safe(()=>window.dashboardChartData&&window.dashboardChartData()),
+      discardedOpportunities: discardedList.slice(0,60).map(d=>({title:d[0],org:d[1],country:d[2],reason:d[3],source:d[4]})),
+      examplePipeline: pipeline ? { note: 'This is illustrative example data for demos, not a real live pipeline.', stageOrder: pipeline.stages, stageCounts: pipeline.counts, totalPipelineValue: pipeline.fmtValue(pipeline.totalValue), proposals: pipeline.items } : null,
+      screeningCriteria: criteria ? { note: 'Criteria as edited on the Criteria screen (saved in this browser); the next search applies them.', ...criteria } : { note: 'The Criteria screen has not been edited in this browser, so searches use the backend defaults.' },
+      knowledgeBase: { note: 'Knowledge base screen. Project summaries and team profiles come from Aceso Global\'s public website; "suggested" project links are expertise matches that still need validation against internal CVs, only "verified" links are confirmed.', projects: safe(()=>window.knowledgeBaseProjects&&window.knowledgeBaseProjects()), team: safe(()=>window.knowledgeBaseTeam&&window.knowledgeBaseTeam()) }
     };
   }
 

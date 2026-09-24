@@ -18,7 +18,8 @@ const { saveSearch, listSearches, getSearchById, getLatestSearch } = require('./
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Copilot requests carry the full on-screen context (charts, Knowledge Base…).
+app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Runs one connector, never lets a single source's failure break the whole search.
@@ -53,7 +54,7 @@ app.post('/api/copilot', async (req, res) => {
   if (!hasGeminiKey()) return res.json({ answer: null, error: 'Gemini is not configured, so Copilot cannot answer right now.' });
   try {
     const context = req.body?.context || {};
-    const raw = await callGemini(buildCopilotPrompt(question, context), { timeoutMs: 30000 });
+    const raw = await callGemini(buildCopilotPrompt(question, context), { timeoutMs: 45000, maxOutputTokens: 2048 });
     res.json({ answer: raw.answer || "I couldn't come up with an answer for that." });
   } catch (err) {
     console.error(`[copilot] failed: ${err.message}`);

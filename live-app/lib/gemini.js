@@ -41,7 +41,7 @@ function hasGeminiKey() {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-async function rawCallGemini(prompt, { model = DEFAULT_MODEL, timeoutMs = 20000 } = {}) {
+async function rawCallGemini(prompt, { model = DEFAULT_MODEL, timeoutMs = 20000, maxOutputTokens = 1024 } = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     const err = new Error('GEMINI_API_KEY is not set');
@@ -58,7 +58,7 @@ async function rawCallGemini(prompt, { model = DEFAULT_MODEL, timeoutMs = 20000 
       signal: controller.signal,
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json', temperature: 0.2, maxOutputTokens: 1024 }
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.2, maxOutputTokens }
       })
     });
     if (!res.ok) {

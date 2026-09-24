@@ -621,3 +621,250 @@ body,button,input,textarea{font-family:var(--sans)}
 .chip-list .chip-add-inline input:focus+button,.chip-list .chip-add-inline input:not(:placeholder-shown)+button{display:inline-block}
 .criteria-v3 .chip-groups{gap:18px}
 #app{padding-bottom:88px}
+
+/* Analyst time saved (hero card + Dashboard history) and Yael's dashboard insights */
+.today-impact{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:600px){.today-impact{grid-template-columns:1fr}}
+.today-impact .hours-card{cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.today-impact .hours-card:hover,.today-impact .hours-card:focus-visible{border-color:#8fc0ea;box-shadow:0 6px 18px rgba(21,148,212,.14)}
+.today-impact .hours-card span{background:#fff4d6;color:#b07a00}
+
+.analyst-hours{margin-top:18px;padding:24px 26px 20px;border-radius:16px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+.hours-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+.hours-title h2{margin:4px 0 6px;font:32px/1.1 var(--serif);color:var(--ink)}
+.hours-title>p:last-child{margin:0;color:var(--muted);font-size:14px;max-width:560px}
+.hours-controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.hours-toggle,.insight-toggle{display:inline-flex;padding:3px;border-radius:9px;background:#eef4fa;border:1px solid #d7e5f0}
+.hours-toggle button,.insight-toggle button{border:0;background:none;padding:7px 14px;border-radius:7px;font:600 12px var(--sans);color:#5b7590;cursor:pointer}
+.hours-toggle button.active,.insight-toggle button.active{background:var(--stage-navy);color:#fff;box-shadow:0 2px 6px rgba(10,76,130,.25)}
+.hours-slider{display:grid;grid-template-columns:auto auto;align-items:baseline;gap:2px 10px;min-width:210px}
+.hours-slider small{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.hours-slider b{justify-self:end;font-size:13px;color:var(--ink)}
+.hours-slider input{grid-column:1/-1;width:100%;accent-color:var(--stage-yellow);cursor:pointer}
+.hours-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0 6px}
+.hours-kpis>div{padding:12px 14px;border-radius:12px;background:#f5f9fd;border:1px solid #e1ecf5}
+.hours-kpis small{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.hours-kpis b{display:block;margin-top:3px;font:26px/1.1 var(--serif);color:var(--stage-navy)}
+.hours-kpis em{display:block;font-style:normal;font-size:11px;color:var(--muted);margin-top:2px}
+.hours-plot{position:relative}
+.hours-svg{width:100%;height:auto;display:block;overflow:visible}
+.hours-bar{transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0);transition:transform .7s cubic-bezier(.2,.8,.2,1) calc(var(--i)*45ms),opacity .15s}
+.hours-body.grown .hours-bar{transform:scaleY(1)}
+.hours-bar.live{fill:#1c6fc0}
+.hours-bar.example{fill:url(#hoursHatch)}
+.hours-bar.dim{opacity:.35}
+.hours-line{fill:none;stroke:#f5bb27;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.hours-dot{fill:#fff;stroke:#f5bb27;stroke-width:2}
+.hours-cum-label{font:700 12px var(--sans);fill:#b07a00}
+.hours-hit{fill:transparent;cursor:pointer;outline:none}
+.hours-tip{position:absolute;top:0;transform:translate(-50%,-6px);padding:8px 11px;border-radius:9px;background:#0b2a4a;color:#fff;font-size:12px;white-space:nowrap;pointer-events:none;box-shadow:0 8px 20px rgba(11,42,74,.25);z-index:4}
+.hours-tip b,.hours-tip span,.hours-tip small{display:block}
+.hours-tip span{font:18px/1.2 var(--serif);color:#ffd766;margin:2px 0}
+.hours-tip small{opacity:.75}
+.analyst-hours .viz-legend .hatch{background:repeating-linear-gradient(45deg,#dcebf8 0 3px,#b9d4ee 3px 6px)}
+.hours-note{margin:10px 0 0;font-size:12px;color:var(--muted)}
+@media(max-width:900px){.hours-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.hours-title h2{font-size:26px}}
+
+.insight-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+.insight-card{display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:14px;background:#fff;border:1px solid var(--line);min-width:0}
+.insight-card header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.insight-card h3{margin:0;font:700 16px var(--sans);color:var(--ink)}
+.insight-sub{margin:-6px 0 0;font-size:12px;color:var(--muted)}
+.insight-sub.small{margin:0;font-size:11px}
+.insight-range{font-size:11px;color:var(--muted)}
+.insight-svg{width:100%;height:auto;display:block}
+.insight-svg g:focus{outline:none}
+.insight-svg g:hover rect,.insight-svg g:focus rect{filter:brightness(1.08)}
+.insight-callout{margin-top:auto;padding:10px 12px;border-left:3px solid var(--stage-blue);border-radius:0 8px 8px 0;background:#f2f8fd;font-size:12px;color:#4f6882}
+.insight-callout b{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+.dq-headline{display:flex;align-items:center;gap:12px}
+.dq-headline>b{font:44px/1 var(--serif);color:var(--stage-blue)}
+.dq-headline span{font-size:12px;color:var(--muted)}
+.dq-headline strong{display:block;font-size:15px;color:var(--ink)}
+.dq-steps{display:grid;gap:9px}
+.dq-steps div{display:grid;grid-template-columns:minmax(0,1.3fr) 1fr 38px;gap:10px;align-items:center;font-size:12px;color:#3d5670}
+.dq-steps i{height:7px;border-radius:4px;background:#e8eef4;overflow:hidden}
+.dq-steps em{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--stage-navy),var(--stage-blue))}
+.dq-steps b{text-align:right;color:var(--ink)}
+.trend-bar{fill:#1c86cf}
+.trend-bar.none{fill:#e8eef4}
+.dr-readiness{display:grid;grid-template-columns:140px 1fr;gap:14px;align-items:center}
+.dr-ring{width:140px;height:140px}
+.dr-pct{font:30px var(--serif);fill:#198568}
+.dr-label{font:11px var(--sans);fill:var(--muted)}
+.dr-readiness ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.dr-readiness li{display:grid;grid-template-columns:10px 1fr;column-gap:8px;font-size:12px}
+.dr-readiness li i{width:9px;height:9px;border-radius:50%;margin-top:4px;grid-row:1/3}
+.dr-readiness li b{color:var(--ink)}
+.dr-readiness li span{color:var(--muted);font-size:11px}
+.insight-foot{display:flex;gap:28px;margin-top:auto;padding-top:10px;border-top:1px solid #e6eef5}
+.insight-foot span{font-size:11px;color:var(--muted)}
+.insight-foot b{display:block;font:22px var(--serif);color:var(--ink)}
+.funnel-svg{max-width:360px;margin:0 auto}
+.funnel-n{font:700 15px var(--sans);fill:#fff}
+.funnel-name{font:600 10px var(--sans);fill:rgba(255,255,255,.85)}
+.funnel-n.dark,.funnel-name.dark{fill:#3b2a00}
+.ins-funders{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.ins-funders li{display:grid;grid-template-columns:16px minmax(0,1.4fr) 1fr 22px 48px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #eef3f8;font-size:12px;color:#34506b}
+.ins-funders li>b{color:var(--muted);font-weight:600}
+.ins-funders li>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ins-funders i{height:7px;border-radius:4px;background:#e8eef4;overflow:hidden}
+.ins-funders em{display:block;height:100%;border-radius:4px;background:var(--stage-blue)}
+.ins-funders strong{text-align:right;color:var(--ink)}
+.ins-funders small{text-align:right;color:var(--muted)}
+@media(max-width:1100px){.insight-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.insight-grid{grid-template-columns:1fr}.dr-readiness{grid-template-columns:1fr;justify-items:center}}
+.hours-svg .viz-axis-label{font-size:12px}
+.insight-svg .viz-axis-label{font-size:10px}
+
+/* Copilot input: the browser's square focus outline poked out of the rounded
+   pill. The focus ring now follows the pill itself. */
+.dashboard-copilot label input{border-radius:15px;outline:none}
+.dashboard-copilot label:focus-within{box-shadow:0 0 0 2px #58b5e2}
+
+/* ======================================================================
+   Dashboard design system — one grid, one card, one type scale.
+   Type: page 32 · section 26 serif · card title 15/600 · body 12–13 ·
+   chart labels 11 · big numbers 24–28. Every SVG is drawn at about its
+   on-screen width so chart text renders at those sizes, not scaled.
+   ====================================================================== */
+#dashboardView{max-width:1440px!important;margin:0 auto;padding:28px 32px 64px!important}
+
+/* Header */
+#dashboardView .dashboard-title-row{display:flex!important;justify-content:space-between;align-items:flex-end;gap:24px;margin:0 0 20px!important}
+#dashboardView .dashboard-title-row h1{font:700 32px/1.1 var(--sans);letter-spacing:-.01em;color:#082f5c;margin:4px 0 6px}
+#dashboardView .dashboard-title-row p{font-size:14px}
+#dashboardView .dashboard-title-row>div:last-child{display:block!important;text-align:right;font-size:12px;color:var(--muted);white-space:nowrap}
+#dashboardView .dashboard-title-row small b{font-size:13px;color:var(--ink)}
+
+/* KPI strip — six equal tiles */
+#dashboardView .executive-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:12px}
+#dashboardView .executive-kpis article{grid-template-columns:34px 1fr;gap:12px;padding:14px 16px;border-radius:14px;border-color:var(--line);box-shadow:0 1px 2px rgba(16,45,82,.04)}
+#dashboardView .executive-kpis article>i{width:34px;height:34px;font-size:16px}
+#dashboardView .executive-kpis small{display:block;font-size:10.5px;letter-spacing:.06em;font-weight:700}
+#dashboardView .executive-kpis b{font-size:26px;line-height:1.15;margin:2px 0}
+#dashboardView .executive-kpis p{font-size:11.5px;line-height:1.3}
+
+/* Full-width bands share the same rhythm and radius */
+#dashboardView .financial-access-card,#dashboardView .dashboard-world,#dashboardView .copilot-bar{margin-top:16px!important;border-radius:16px!important}
+#dashboardView .dashboard-world h2{font-size:32px}
+#dashboardView .dashboard-detail-grid:empty{display:none}
+
+/* Sections */
+#dashboardView .dash-sections{margin-top:8px}
+#dashboardView .dsection{margin-top:40px}
+#dashboardView .dsection-head{margin:0 0 14px}
+#dashboardView .dsection-head .eyebrow{margin:0 0 4px;font-size:11px;letter-spacing:.12em;color:#0e7cc4}
+#dashboardView .dsection-head h2{margin:0;font:26px/1.2 var(--serif);color:var(--ink)}
+#dashboardView .dsection-head>p:not(.eyebrow){margin:6px 0 0;font-size:13px;color:var(--muted)}
+
+/* Grid + card */
+#dashboardView .dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}
+#dashboardView .dcard{display:flex;flex-direction:column;min-width:0;margin:0;padding:18px 20px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(16,45,82,.04)}
+#dashboardView .dcard.span-2{grid-column:span 2}
+#dashboardView .dcard.span-3{grid-column:1/-1}
+#dashboardView .dcard-head{display:flex;align-items:flex-start;gap:10px;margin:0 0 14px}
+#dashboardView .dcard-head>div{flex:1;min-width:0}
+#dashboardView .dcard-head h3{margin:0;font:600 15px/1.3 var(--sans);color:var(--ink)}
+#dashboardView .dcard-head p{margin:3px 0 0;font-size:12px;line-height:1.4;color:var(--muted)}
+#dashboardView .dcard-note{flex:none;padding:3px 9px;border-radius:999px;background:#fff4d6;color:#8a6100;font-size:10.5px;font-weight:600;white-space:nowrap}
+#dashboardView .dcard-body{flex:1;display:flex;flex-direction:column;min-width:0}
+#dashboardView .dcard-foot{margin-top:14px;padding-top:12px;border-top:1px solid #eef3f8;font-size:12px;line-height:1.45;color:#5b7189}
+#dashboardView .dcard-foot b{color:var(--ink);font-weight:600}
+#dashboardView .dcard .chart-empty{margin:auto 0;padding:24px 8px;font-size:12.5px}
+#dashboardView .dcard .viz-legend{margin-top:10px;font-size:11px}
+
+/* Chart text — one scale across all SVGs */
+#dashboardView .dcard svg{display:block;width:100%;max-width:none;height:auto;margin:0 auto}
+#dashboardView .dcard svg text{font-family:var(--sans)}
+#dashboardView .dcard .viz-axis-label{font-size:11px;fill:#7187a0}
+#dashboardView .dcard .viz-value-label{font-size:11px;font-weight:600;fill:#244565}
+
+/* Ranked bars — fixed row rhythm so neighbouring cards line up */
+#dashboardView .viz-bars{gap:10px;margin:0}
+#dashboardView .viz-bar-row{grid-template-columns:minmax(0,128px) 1fr 30px;gap:10px;min-height:20px}
+#dashboardView .viz-bar-label{font-size:12px;color:#34506b}
+#dashboardView .viz-bar-track{height:10px;border-radius:5px}
+#dashboardView .viz-bar-fill{border-radius:5px}
+#dashboardView .viz-bar-value{font-size:12px;color:var(--ink)}
+#dashboardView .viz-bars-more{margin:10px 0 0;font-size:11.5px;color:var(--muted)}
+#dashboardView .viz-funnel{gap:10px;margin:0}
+#dashboardView .viz-funnel-row{grid-template-columns:80px 1fr}
+#dashboardView .viz-funnel-track{height:20px}
+
+/* Heatmap */
+#dashboardView .viz-heatmap{gap:4px;margin:4px 0 0}
+#dashboardView .viz-heat-cell{aspect-ratio:auto;height:44px;border-radius:6px}
+#dashboardView .viz-heat-labels{font-size:11px}
+#dashboardView .viz-heat-scale{display:flex;align-items:center;gap:4px;margin-top:14px;font-size:11px;color:var(--muted)}
+#dashboardView .viz-heat-scale i{width:18px;height:8px;border-radius:2px}
+#dashboardView .viz-heat-scale span:last-child{margin-left:4px}
+
+/* Word cloud */
+#dashboardView .viz-wordcloud{gap:6px;margin:0;align-content:flex-start}
+#dashboardView .viz-cloud-chip{padding:3px 9px;line-height:1.3}
+
+/* Donuts / rings — centred in their card */
+#dashboardView .viz-donut-wrap{margin:auto 0;gap:22px;flex-wrap:nowrap}
+#dashboardView .viz-donut{width:150px;height:150px}
+#dashboardView .viz-donut-total{font:600 30px var(--serif)}
+#dashboardView .dr-readiness{margin:auto 0;grid-template-columns:130px 1fr;gap:18px}
+#dashboardView .dr-ring{width:130px;height:130px}
+#dashboardView .dr-readiness li b{font-size:12.5px}
+
+/* Radar / treemap / histogram / funnel fill their column */
+#dashboardView .viz-radar,#dashboardView .viz-treemap,#dashboardView .viz-histogram{margin:auto}
+#dashboardView .funnel-svg{max-width:400px}
+#dashboardView .funnel-n{font:700 14px var(--sans)}
+#dashboardView .funnel-name{font:600 10.5px var(--sans)}
+
+/* Flow + arcs: labels stay legible over ribbons */
+#dashboardView .viz-flow-label{font-size:12px;font-weight:600;fill:var(--ink);paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+#dashboardView .viz-arc .viz-axis-label{font-size:11.5px;fill:#34506b}
+
+/* Insight pieces reused inside cards */
+#dashboardView .dq-headline{margin:0 0 16px}
+#dashboardView .dq-headline>b{font-size:40px}
+#dashboardView .dq-steps{gap:12px}
+#dashboardView .ins-funders{gap:0}
+#dashboardView .ins-funders li{grid-template-columns:minmax(0,1.5fr) 1fr 22px 48px;padding:6px 0;font-size:12px}
+#dashboardView .insight-toggle{flex:none}
+#dashboardView .insight-toggle button{padding:5px 10px;font-size:11px}
+
+/* Analyst hours card */
+#dashboardView .analyst-hours{margin:0;padding:22px 24px 18px;box-shadow:0 1px 2px rgba(16,45,82,.04)}
+#dashboardView .hours-title h2{font-size:28px}
+#dashboardView .hours-title .eyebrow{display:none}
+#dashboardView .hours-title>p:last-child{font-size:13px}
+#dashboardView .hours-kpis b{font-size:24px}
+
+/* Security note aligns with the grid */
+#dashboardView .security-note{margin-top:40px}
+
+@media(max-width:1180px){
+  #dashboardView .executive-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #dashboardView .dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #dashboardView .dcard.span-2,#dashboardView .dcard.span-3{grid-column:1/-1}
+}
+@media(max-width:720px){
+  #dashboardView{padding:20px 16px 48px!important}
+  #dashboardView .dashboard-title-row{flex-direction:column;align-items:flex-start}
+  #dashboardView .dashboard-title-row>div:last-child{text-align:left}
+  #dashboardView .dashboard-title-row h1{font-size:26px}
+  #dashboardView .executive-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #dashboardView .dgrid{grid-template-columns:1fr}
+  #dashboardView .dsection-head h2{font-size:22px}
+  #dashboardView .dr-readiness,#dashboardView .viz-donut-wrap{grid-template-columns:1fr;flex-wrap:wrap;justify-items:center}
+}
+
+/* Fixed-size marks must win over the card-wide "svg fills its column" rule */
+#dashboardView .dcard svg.viz-donut{width:150px;height:150px;flex:none;margin:0}
+#dashboardView .dcard svg.dr-ring{width:130px;height:130px;margin:0}
+#dashboardView .dcard .insight-toggle{display:inline-flex;width:auto;flex:none;align-self:flex-start}
+#dashboardView .dcard .insight-toggle button{flex:none;width:auto;min-width:0}
+
+/* Phones: wide diagrams keep a readable size and scroll inside their card */
+@media(max-width:720px){
+  #dashboardView .dcard-body:has(.viz-flow),#dashboardView .dcard-body:has(.viz-arc),#dashboardView .dcard-body:has(.viz-scatter),#dashboardView .hours-plot{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #dashboardView .dcard svg.viz-flow,#dashboardView .dcard svg.viz-arc,#dashboardView .dcard svg.viz-scatter,#dashboardView .hours-svg{min-width:640px}
+}

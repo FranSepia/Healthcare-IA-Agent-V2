@@ -49,13 +49,16 @@
   function barChartHTML(rows, opts = {}) {
     if (!rows.length) return emptyState(opts.label || 'this chart');
     const max = Math.max(...rows.map(r => r.value)) || 1;
-    return `<div class="viz-bars">${rows.slice(0, opts.limit || 8).map(r => { const name = escapeHtml(r.name), val = opts.fmt ? opts.fmt(r.value) : r.value; return `
-      <div class="viz-bar-row" tabindex="0" aria-label="${name}: ${val}">
+    // Capped at 6 rows so cards sharing a grid row keep the same height.
+    const limit = opts.limit || 6;
+    const rest = rows.slice(limit);
+    const more = rest.length ? `<p class="viz-bars-more">+ ${rest.length} more (${rest.reduce((s, r) => s + r.value, 0)} opportunit${rest.reduce((s, r) => s + r.value, 0) === 1 ? 'y' : 'ies'})</p>` : '';
+    return `<div class="viz-bars">${rows.slice(0, limit).map(r => { const name = escapeHtml(r.name), val = opts.fmt ? opts.fmt(r.value) : r.value; return `
+      <div class="viz-bar-row" tabindex="0" aria-label="${name}: ${val}" title="${name}: ${val}">
         <span class="viz-bar-label">${name}</span>
         <span class="viz-bar-track"><span class="viz-bar-fill" style="width:${Math.max(4, Math.round(r.value / max * 100))}%"></span></span>
         <span class="viz-bar-value">${val}</span>
-        <span class="viz-bar-tip">${name}: ${val}</span>
-      </div>`; }).join('')}</div>`;
+      </div>`; }).join('')}</div>${more}`;
   }
 
   // ---- Funnel (ordinal sequential ramp, widest-to-narrowest) ----
@@ -71,18 +74,24 @@
   // ---- Scatter/bubble: fit score (x) vs. potential value (y), color by pillar (capped) ----
   function scatterHTML(points, opts = {}) {
     if (points.length < 3) return emptyState('a fit-vs-value scatter plot');
-    const w = 920, h = 220, pad = { l: 46, r: 16, t: 12, b: 30 };
+    // Drawn at roughly its on-screen width (a full-width card) so text stays ~11px.
+    const w = 1300, h = 240, pad = { l: 58, r: 18, t: 14, b: 40 };
     const maxVal = Math.max(...points.map(p => p.value));
     const pillars = [...new Set(points.map(p => p.pillar))];
     const topPillars = pillars.slice(0, 3);
     const colorFor = pillar => { const i = topPillars.indexOf(pillar); return i >= 0 ? CATEGORICAL[i] : OTHER_COLOR; };
-    const x = score => pad.l + (score / 100) * (w - pad.l - pad.r);
-    const y = val => h - pad.b - (val / (maxVal || 1)) * (h - pad.t - pad.b);
-    const gxAnchor = gx => gx === 0 ? 'start' : gx === 100 ? 'end' : 'middle';
-    const gridlines = [0, 25, 50, 75, 100].map(gx => `<line x1="${x(gx)}" y1="${pad.t}" x2="${x(gx)}" y2="${h - pad.b}" class="viz-grid"/><text x="${x(gx)}" y="${h - pad.b + 16}" class="viz-axis-label" text-anchor="${gxAnchor(gx)}">${gx}</text>`).join('');
+    // Fit axis starts near the lowest score instead of 0, so the points
+    // spread across the chart rather than bunching at the right edge.
+    const xMin = Math.max(0, Math.floor((Math.min(...points.map(p => p.score)) - 5) / 10) * 10);
+    const xTicks = []; for (let t = xMin; t <= 100; t += 10) xTicks.push(t);
+    const yMax = maxVal * 1.1 || 1;
+    const x = score => pad.l + ((score - xMin) / (100 - xMin)) * (w - pad.l - pad.r);
+    const y = val => h - pad.b - (val / yMax) * (h - pad.t - pad.b);
+    const vGrid = xTicks.map(gx => `<line x1="${x(gx)}" y1="${pad.t}" x2="${x(gx)}" y2="${h - pad.b}" class="viz-grid"/><text x="${x(gx)}" y="${h - pad.b + 16}" class="viz-axis-label" text-anchor="middle">${gx}</text>`).join('');
+    const hGrid = [0, 0.5, 1].map(f => `<line x1="${pad.l}" y1="${y(maxVal * f).toFixed(1)}" x2="${w - pad.r}" y2="${y(maxVal * f).toFixed(1)}" class="viz-grid"/><text x="${pad.l - 8}" y="${(y(maxVal * f) + 4).toFixed(1)}" class="viz-axis-label" text-anchor="end">${fmtMoney(maxVal * f)}</text>`).join('');
     const dots = points.map(p => `<circle cx="${x(p.score).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="6" fill="${colorFor(p.pillar)}" stroke="#fcfcfb" stroke-width="2" tabindex="0"><title>${escapeHtml(p.title)} — ${p.score}% fit, ${fmtMoney(p.value)}, ${escapeHtml(p.pillar)}</title></circle>`).join('');
     const legend = (topPillars.length > 1 ? topPillars.map((p, i) => `<span><i style="background:${CATEGORICAL[i]}"></i>${escapeHtml(p)}</span>`).join('') + (pillars.length > 3 ? `<span><i style="background:${OTHER_COLOR}"></i>Other</span>` : '') : '');
-    return `<svg viewBox="0 0 ${w} ${h}" class="viz-scatter" role="img" aria-label="Fit score versus potential value scatter plot">${gridlines}<line x1="${pad.l}" y1="${h - pad.b}" x2="${w - pad.r}" y2="${h - pad.b}" class="viz-axis"/><text x="${w / 2}" y="${h - 4}" class="viz-axis-label" text-anchor="middle">Fit score</text>${dots}</svg>${legend ? `<div class="viz-legend">${legend}</div>` : ''}`;
+    return `<svg viewBox="0 0 ${w} ${h}" class="viz-scatter" role="img" aria-label="Fit score versus potential value scatter plot">${hGrid}${vGrid}<line x1="${pad.l}" y1="${h - pad.b}" x2="${w - pad.r}" y2="${h - pad.b}" class="viz-axis"/><text x="${(pad.l + w - pad.r) / 2}" y="${h - 4}" class="viz-axis-label" text-anchor="middle">Fit score →</text>${dots}</svg>${legend ? `<div class="viz-legend">${legend}</div>` : ''}`;
   }
 
   // ---- Heatmap: submission deadlines by week ----
@@ -106,7 +115,7 @@
     return `<div class="viz-heatmap">${weeks.map(w => {
       const step = w.count === 0 ? 0 : Math.max(1, Math.round(w.count / max * (SEQ_BLUE.length - 1)));
       return `<div class="viz-heat-cell" style="background:${step === 0 ? '#f0efec' : SEQ_BLUE[step]}" tabindex="0" aria-label="Week of ${w.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${w.count} deadlines"><span class="viz-heat-tip">${w.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${w.count}</span></div>`;
-    }).join('')}</div><div class="viz-heat-labels"><span>Next 10 weeks</span><span>${max} peak/week</span></div>`;
+    }).join('')}</div><div class="viz-heat-labels"><span>${weeks[0].start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span><span>${weeks[5].start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span><span>${weeks[9].start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></div><div class="viz-heat-scale"><span>Fewer</span>${SEQ_BLUE.filter((_, i) => i % 2 === 0).map(c => `<i style="background:${c}"></i>`).join('')}<span>More · peak ${max}/week</span></div>`;
   }
 
   // ---- Word cloud: keyword frequency (size-encoded, single hue) ----
@@ -121,11 +130,13 @@
     // cluster close together (e.g. mostly 1s and 2s).
     return `<div class="viz-wordcloud">${entries.map(([word, count], i) => {
       const rank = n > 1 ? i / (n - 1) : 0;
-      const size = 19 - rank * 10;
+      // 16px → 11px keeps the most frequent theme prominent without
+      // dwarfing the ~12px text used by every other card.
+      const size = 16 - rank * 5;
       const step = Math.round((1 - rank) * (SEQ_BLUE.length - 1));
       const dark = step >= 4;
       const safeWord = escapeHtml(word);
-      return `<span class="viz-cloud-chip" style="background:${SEQ_BLUE[step]};color:${dark ? '#fff' : '#12375e'};font-size:${size.toFixed(1)}px;font-weight:${dark ? 800 : 700}" tabindex="0" aria-label="${safeWord}: ${count} opportunities">${safeWord}<i>${count}</i></span>`;
+      return `<span class="viz-cloud-chip" style="background:${SEQ_BLUE[step]};color:${dark ? '#fff' : '#12375e'};font-size:${size.toFixed(1)}px;font-weight:${dark ? 700 : 600}" tabindex="0" aria-label="${safeWord}: ${count} opportunities">${safeWord}<i>${count}</i></span>`;
     }).join('')}</div>`;
   }
 
@@ -154,7 +165,7 @@
     const buckets = Array.from({ length: 10 }, (_, i) => ({ from: i * 10, count: 0 }));
     scores.forEach(s => { const idx = Math.min(9, Math.floor(s / 10)); buckets[idx].count++; });
     const max = Math.max(...buckets.map(b => b.count)) || 1;
-    const w = 320, h = 160, pad = { l: 4, r: 4, t: 6, b: 22 };
+    const w = 400, h = 180, pad = { l: 4, r: 4, t: 8, b: 22 };
     const bw = (w - pad.l - pad.r) / buckets.length;
     const bars = buckets.map((b, i) => {
       const bh = (b.count / max) * (h - pad.t - pad.b);
@@ -173,7 +184,7 @@
   function radarHTML(rows) {
     if (rows.length < 3) return emptyState('a source-quality radar');
     const axes = rows.slice(0, 8);
-    const n = axes.length, cx = 140, cy = 118, r = 76;
+    const n = axes.length, cx = 200, cy = 124, r = 82;
     const angle = i => (Math.PI * 2 * i / n) - Math.PI / 2;
     const pt = (i, val) => { const a = angle(i), rad = (Math.max(0, Math.min(100, val)) / 100) * r; return [cx + rad * Math.cos(a), cy + rad * Math.sin(a)]; };
     const rings = [25, 50, 75, 100].map(ring => `<polygon points="${axes.map((_, i) => pt(i, ring).join(',')).join(' ')}" class="viz-radar-ring"/>`).join('');
@@ -182,7 +193,7 @@
     const shape = `<polygon points="${dataPts.map(p => p.join(',')).join(' ')}" class="viz-radar-shape"/>`;
     const dots = axes.map((row, i) => { const [x, y] = dataPts[i]; return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5" tabindex="0"><title>${escapeHtml(row.name)}: ${Math.round(row.value)}% average fit</title></circle>`; }).join('');
     const labels = axes.map((row, i) => { const a = angle(i); const [x, y] = pt(i, 124); const anchor = Math.abs(Math.cos(a)) < 0.25 ? 'middle' : (Math.cos(a) > 0 ? 'start' : 'end'); return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" class="viz-axis-label" text-anchor="${anchor}">${escapeHtml(row.name)}</text>`; }).join('');
-    return `<svg viewBox="0 0 280 250" class="viz-radar" role="img" aria-label="Average fit score by source">${rings}${spokes}${shape}${dots}${labels}</svg>`;
+    return `<svg viewBox="0 0 400 250" class="viz-radar" role="img" aria-label="Average fit score by source">${rings}${spokes}${shape}${dots}${labels}</svg>`;
   }
 
   // ---- Treemap: potential value by theme (squarified, real $ sums) ----
@@ -212,7 +223,7 @@
   }
   function treemapHTML(rows) {
     if (rows.length < 3) return emptyState('a value-by-theme treemap');
-    const w = 340, h = 210;
+    const w = 400, h = 220;
     const sorted = rows.slice().sort((a, b) => b.value - a.value);
     const total = sorted.reduce((s, r) => s + r.value, 0);
     const scale = (w * h) / total;
@@ -231,15 +242,18 @@
     const sources = [...new Set(edges.map(e => e.source))].slice(0, 5);
     const pillars = [...new Set(edges.map(e => e.pillar))].slice(0, 4);
     const nodes = [...sources.map(name => ({ name, type: 'source' })), ...pillars.map(name => ({ name, type: 'pillar' }))];
-    const w = 1120, h = 260, margin = 80;
+    const w = 1300, h = 200, margin = 90;
     const step = (w - margin * 2) / Math.max(1, nodes.length - 1);
     const xFor = name => margin + nodes.findIndex(n => n.name === name) * step;
-    const baseline = h - 70;
+    const baseline = h - 58;
     const shown = edges.filter(e => sources.includes(e.source) && pillars.includes(e.pillar));
     const maxWeight = Math.max(...shown.map(e => e.weight), 1);
     const arcs = shown.map(e => {
       const x1 = xFor(e.source), x2 = xFor(e.pillar), mx = (x1 + x2) / 2, dist = Math.abs(x2 - x1);
-      const peak = baseline - Math.min(110, 24 + dist * 0.5);
+      // A quadratic curve's apex sits halfway to its control point, so the
+      // control goes at twice the wanted rise; long arcs use the full height.
+      const rise = Math.min(baseline - 12, 16 + dist * 0.16);
+      const peak = baseline - 2 * rise;
       const strokeW = (1 + (e.weight / maxWeight) * 5).toFixed(1);
       return `<path d="M${x1.toFixed(1)},${baseline} Q${mx.toFixed(1)},${peak.toFixed(1)} ${x2.toFixed(1)},${baseline}" fill="none" stroke="#2a78d6" stroke-width="${strokeW}" opacity="${(0.22 + (e.weight / maxWeight) * 0.55).toFixed(2)}" tabindex="0"><title>${escapeHtml(e.source)} → ${escapeHtml(e.pillar)}: ${e.weight}</title></path>`;
     }).join('');
@@ -250,7 +264,7 @@
     const dots = nodes.map(n => `<circle cx="${xFor(n.name).toFixed(1)}" cy="${baseline}" r="6" fill="${n.type === 'source' ? '#2a78d6' : '#eb6834'}" tabindex="0"><title>${escapeHtml(n.name)}</title></circle>`).join('');
     const labels = nodes.map((n, i) => {
       const x = xFor(n.name);
-      const short = n.name.length > 15 ? n.name.slice(0, 14) + '…' : n.name;
+      const short = n.name.length > 24 ? n.name.slice(0, 23) + '…' : n.name;
       const rowY = baseline + 20 + (i % 2) * 16;
       return `<text x="${x.toFixed(1)}" y="${rowY}" class="viz-axis-label" text-anchor="middle">${escapeHtml(short)}</text>`;
     }).join('');
@@ -260,7 +274,7 @@
   // ---- Flow diagram: Found -> Relevant/Discarded -> fit tier of the relevant ones (real, 2-stage) ----
   function flowHTML(found, relevantCount, discardedCount, tierCounts) {
     if (found < 4) return emptyState('a search-to-decision flow diagram');
-    const w = 1120, h = 300, colX = [30, 460, 890], nodeW = 65;
+    const w = 860, h = 250, colX = [0, 330, 660], nodeW = 40;
     const scale = (h - 20) / found;
     const bNodes = [
       { name: 'Relevant', value: relevantCount, color: '#2a78d6' },
@@ -284,9 +298,9 @@
     return `<svg viewBox="0 0 ${w} ${h}" class="viz-flow" role="img" aria-label="Search results flowing from found to relevant or discarded, then by fit tier">${abRibbons}${bcRibbons}${nodesHTML}</svg>`;
   }
 
-  function computeAndRender() {
-    const root = document.querySelector('#dashboardExtraCharts');
-    if (!root) return;
+  // One computation shared by the charts and by Aceso Copilot, so Copilot
+  // explains exactly the numbers on screen.
+  function computeData() {
     const opps = (typeof window.activeOpportunities === 'function' ? window.activeOpportunities() : window.opportunities) || [];
     const discardedList = (typeof discarded !== 'undefined' ? discarded : []) || [];
 
@@ -317,66 +331,68 @@
     const dueDates = opps.map(o => o.due).filter(Boolean);
     const keywords = opps.flatMap(o => (o.meta && o.meta.keywords) || []);
     const pipeline = typeof window.pipelineStats === 'function' ? window.pipelineStats() : null;
-
-    root.innerHTML = `
-      <section class="chart-card">
-        <p class="eyebrow">RESULTS BY SOURCE</p>
-        ${barChartHTML(sourceRows, { label: 'sources' })}
-      </section>
-      <section class="chart-card">
-        <p class="eyebrow">OPPORTUNITIES BY THEME</p>
-        ${barChartHTML(pillarRows, { label: 'themes' })}
-      </section>
-      <section class="chart-card">
-        <p class="eyebrow">TOP COUNTRIES</p>
-        ${barChartHTML(countryRows, { label: 'countries' })}
-      </section>
-      ${pipeline ? `<section class="chart-card">
-        <p class="eyebrow">PIPELINE OVERVIEW <span class="chart-card-note">(example data)</span></p>
-        ${funnelHTML(pipeline.stages, pipeline.counts)}
-      </section>` : ''}
-      <section class="chart-card chart-card-wide">
-        <p class="eyebrow">FIT SCORE VS. POTENTIAL VALUE${scatterIsExample ? ' <span class="chart-card-note">(example data)</span>' : ''}</p>
-        ${scatterHTML(scatterPoints)}
-      </section>
-      <section class="chart-card">
-        <p class="eyebrow">UPCOMING DEADLINES</p>
-        ${heatmapHTML(dueDates)}
-      </section>
-      <section class="chart-card">
-        <p class="eyebrow">MOST COMMON THEMES</p>
-        ${wordCloudHTML(keywords)}
-      </section>
-      <section class="chart-card">
-        <p class="eyebrow">FIT TIER BREAKDOWN</p>
-        ${donutHTML(tierCounts)}
-      </section>
-      <section class="chart-card">
-        <p class="eyebrow">FIT SCORE DISTRIBUTION</p>
-        ${histogramHTML(scores)}
-      </section>
-      <section class="chart-card">
-        <p class="eyebrow">AVERAGE FIT BY SOURCE</p>
-        ${radarHTML(avgScoreBySource)}
-      </section>
-      <section class="chart-card">
-        <p class="eyebrow">POTENTIAL VALUE BY THEME</p>
-        ${treemapHTML(valueByPillarRows)}
-      </section>
-      <section class="chart-card chart-card-wide">
-        <p class="eyebrow">WHICH SOURCES SURFACE WHICH THEMES</p>
-        ${arcDiagramHTML(sourcePillarEdges)}
-      </section>
-      <section class="chart-card chart-card-wide">
-        <p class="eyebrow">FROM SEARCH TO DECISION</p>
-        ${flowHTML(opps.length + discardedList.length, opps.length, discardedList.length, tierCounts)}
-      </section>
-    `;
+    return { opps, discardedList, tierCounts, pillarRows, countryRows, sourceRows, valueByPillarRows, avgScoreBySource, sourcePillarEdges, scatterIsExample, scatterPoints, scores, dueDates, keywords, pipeline };
   }
 
-  window.renderDashboardCharts = computeAndRender;
-  document.addEventListener('aceso:dashboard-ready', computeAndRender);
-  document.addEventListener('aceso:live-search-complete', () => {
-    if (document.querySelector('#dashboardExtraCharts')) computeAndRender();
-  });
+  // Chart cards for dashboard-layout.js, which places them into themed
+  // sections: { id: { title, sub, note, body, foot } }. Titles are sentence
+  // case and every card shares one header style.
+  function chartCards() {
+    const { opps, discardedList, tierCounts, pillarRows, countryRows, sourceRows, valueByPillarRows, avgScoreBySource, sourcePillarEdges, scatterIsExample, scatterPoints, scores, dueDates, keywords, pipeline } = computeData();
+    const share = (rows, total) => rows.length && total ? Math.round(rows[0].value / total * 100) : 0;
+    const bestSource = avgScoreBySource[0];
+    const found = opps.length + discardedList.length;
+    return {
+      resultsBySource: { title: 'Results by source', sub: 'Relevant opportunities each portal returned.', body: barChartHTML(sourceRows, { label: 'sources' }),
+        foot: sourceRows.length ? `<b>${escapeHtml(sourceRows[0].name)}</b> supplies ${share(sourceRows, opps.length)}% of relevant results.` : '' },
+      opportunitiesByTheme: { title: 'Opportunities by theme', sub: 'Relevant opportunities per Aceso thematic pillar.', body: barChartHTML(pillarRows, { label: 'themes' }),
+        foot: pillarRows.length ? `<b>${escapeHtml(pillarRows[0].name)}</b> is the most active theme.` : '' },
+      topCountries: { title: 'Top countries', sub: 'Where the relevant opportunities are.', body: barChartHTML(countryRows, { label: 'countries' }) },
+      pipelineOverview: pipeline ? { title: 'Pipeline overview', sub: 'Opportunities currently in each stage.', note: 'Example data', body: funnelHTML(pipeline.stages, pipeline.counts) } : null,
+      fitVsValue: { title: 'Fit score vs. potential value', sub: 'Each dot is an opportunity with a published budget; color = theme.', note: scatterIsExample ? 'Example data' : '', body: scatterHTML(scatterPoints),
+        foot: scatterIsExample ? 'Too few real opportunities publish a budget to plot yet, so this shows illustrative points.' : '' },
+      upcomingDeadlines: { title: 'Upcoming deadlines', sub: 'Relevant opportunities closing each week, next 10 weeks.', body: heatmapHTML(dueDates) },
+      commonThemes: { title: 'Most common themes', sub: 'Keywords the agent extracted; larger = more frequent.', body: wordCloudHTML(keywords) },
+      fitTiers: { title: 'Fit tier breakdown', sub: 'Strong ≥ 85 · Potential 65–84 · Low < 65.', body: donutHTML(tierCounts) },
+      fitDistribution: { title: 'Fit score distribution', sub: 'Relevant opportunities per 10-point fit bucket.', body: histogramHTML(scores) },
+      fitBySource: { title: 'Average fit by source', sub: 'Which portals bring the best-matching work.', body: radarHTML(avgScoreBySource),
+        foot: bestSource ? `<b>${escapeHtml(bestSource.name)}</b> has the highest average fit (${Math.round(bestSource.value)}%).` : '' },
+      valueByTheme: { title: 'Potential value by theme', sub: 'Sum of published budgets per theme.', body: treemapHTML(valueByPillarRows) },
+      sourcesToThemes: { title: 'Which sources surface which themes', sub: 'Thicker arcs = more opportunities from that source in that theme.', body: arcDiagramHTML(sourcePillarEdges) },
+      searchToDecision: { title: 'From search to decision', sub: 'Everything found, split by the screening rules and then by fit.', body: flowHTML(found, opps.length, discardedList.length, tierCounts),
+        foot: found ? `${Math.round(discardedList.length / found * 100)}% of notices were excluded automatically, each with a traceable reason.` : '' }
+    };
+  }
+
+  // Copilot-facing description of every chart in the "What this search found"
+  // section: what each shows, how it is computed, and its current values.
+  function describeForCopilot() {
+    const d = computeData();
+    const now = new Date();
+    const weeks = Array.from({ length: 10 }, (_, i) => { const s = new Date(now); s.setDate(now.getDate() + i * 7); return { weekOf: s.toISOString().slice(0, 10), deadlines: 0 }; });
+    d.dueDates.forEach(due => { const t = new Date(due); if (Number.isNaN(t.getTime())) return; const days = Math.floor((t - now) / 86400000); if (days >= 0 && days < 70) weeks[Math.floor(days / 7)].deadlines += 1; });
+    const buckets = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}-${i * 10 + 9}`, count: 0 }));
+    d.scores.forEach(s => { buckets[Math.min(9, Math.floor(s / 10))].count += 1; });
+    const kw = new Map(); d.keywords.forEach(k => { const key = k.trim(); if (key) kw.set(key, (kw.get(key) || 0) + 1); });
+    const round = rows => rows.map(r => ({ name: r.name, value: Math.round(r.value * 10) / 10 }));
+    return {
+      resultsBySource: { chart: 'Horizontal bars "Results by source"', how: 'Count of relevant opportunities per data source in the current search.', data: d.sourceRows },
+      opportunitiesByTheme: { chart: 'Horizontal bars "Opportunities by theme"', how: 'Count of relevant opportunities per Aceso thematic pillar assigned by the agent.', data: d.pillarRows },
+      topCountries: { chart: 'Horizontal bars "Top countries"', how: 'Count of relevant opportunities per country.', data: d.countryRows },
+      pipelineOverview: d.pipeline ? { chart: 'Funnel "Pipeline overview"', how: 'Opportunities currently in each pipeline stage.', isExampleData: true, stages: d.pipeline.stages, counts: d.pipeline.counts } : null,
+      fitVsValueScatter: { chart: 'Scatter "Fit score vs. potential value"', how: 'Each dot is an opportunity: x = fit score (0-100), y = published budget, color = theme. Only opportunities with a published budget can be plotted.', isExampleData: d.scatterIsExample, note: d.scatterIsExample ? 'Fewer than 3 real opportunities publish a budget, so the chart shows illustrative example points.' : undefined, points: d.scatterPoints.map(p => ({ title: p.title, fitScore: p.score, value: fmtMoney(p.value), theme: p.pillar })) },
+      upcomingDeadlinesHeatmap: { chart: 'Heatmap "Upcoming deadlines"', how: 'Ten cells, one per week starting today; darker blue = more relevant opportunities closing that week.', weeks },
+      mostCommonThemes: { chart: 'Word cloud "Most common themes"', how: 'Keywords the agent extracted from relevant opportunities; bigger and darker = more frequent (top 12).', data: [...kw.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([word, count]) => ({ word, count })) },
+      fitTierBreakdown: { chart: 'Donut "Fit tier breakdown"', how: 'Relevant opportunities by fit tier: Strong Fit = score ≥ 85, Potential Fit = 65-84, Low Fit < 65.', counts: d.tierCounts },
+      fitScoreDistribution: { chart: 'Histogram "Fit score distribution"', how: 'Relevant opportunities per 10-point fit-score bucket; green ≥ 80, blue 50-79, grey < 50.', buckets },
+      averageFitBySource: { chart: 'Radar "Average fit by source"', how: 'Average fit score of the relevant opportunities each source returned — which sources bring the best-matching work.', data: round(d.avgScoreBySource) },
+      potentialValueByTheme: { chart: 'Treemap "Potential value by theme"', how: 'Sum of published budgets per theme; shows "not enough data" with fewer than 3 themes that publish budgets.', data: d.valueByPillarRows.map(r => ({ name: r.name, value: fmtMoney(r.value) })) },
+      sourcesToThemes: { chart: 'Arc diagram "Which sources surface which themes"', how: 'Arcs connect a source (blue) to a theme (orange); thicker = more opportunities from that source in that theme.', edges: d.sourcePillarEdges },
+      searchToDecisionFlow: { chart: 'Flow (Sankey) "From search to decision"', how: 'Everything found splits into relevant vs discarded by the screening rules; relevant then splits by fit tier.', found: d.opps.length + d.discardedList.length, relevant: d.opps.length, discarded: d.discardedList.length, relevantByFitTier: d.tierCounts }
+    };
+  }
+
+  window.dashboardChartData = describeForCopilot;
+  // Rendering and re-rendering on new searches is driven by dashboard-layout.js.
+  window.dashboardChartCards = chartCards;
 })();
