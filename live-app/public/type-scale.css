@@ -43,6 +43,8 @@
   .nb-source strong em,
   svg .viz-donut-total,
   svg .dr-pct,
+  .simple-fig,
+  .simple-fit,
   #_ts#_ts#_ts){font-size:var(--fs-m)!important}
 
 /* L — page titles and the home headline figure */
