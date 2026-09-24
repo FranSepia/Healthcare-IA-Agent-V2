@@ -5,51 +5,56 @@
   // shapes against real funder types), not live data. window.pipelineStats()
   // exposes the same numbers the Dashboard's pipeline funnel reads, so the
   // two views can never disagree.
+  // Stages, rows and owners follow Yael's pipeline (Aceso team members as
+  // owners). Values are illustrative so example totals can be computed.
   const stageData = {
     Qualified: [
-      { score: 88, title: 'Health Financing Systems Assessment', summary: 'Public-expenditure review and fiscal-space analysis', funder: 'World Bank', country: 'Kenya', focus: 'Health financing', owner: 'Sofia Reyes', initials: 'SR', progress: 25, next: 'Complete evidence review', date: '2 Oct 2026', fit: 'High', value: 1400000 },
-      { score: 82, title: 'Digital Health Interoperability Roadmap', summary: 'National EHR standards and data-exchange strategy', funder: 'Gates Foundation', country: 'Rwanda', focus: 'Digital health', owner: 'Marcus Chen', initials: 'MC', progress: 15, next: 'Confirm team availability', date: '9 Oct 2026', fit: 'High', value: 620000 },
-      { score: 79, title: 'Universal Health Coverage Policy Advisory', summary: 'UHC transition strategy and stakeholder alignment', funder: 'WHO', country: 'Ghana', focus: 'UHC transition', owner: 'Amara Okafor', initials: 'AO', progress: 10, next: 'Validate eligibility', date: '14 Oct 2026', fit: 'Medium', value: 480000 }
+      { score: 93, title: 'Health Financing Reform & Domestic Resource Mobilization', summary: 'Eligibility, evidence and team availability', funder: 'World Bank', country: 'Kenya', focus: 'Health systems financing', owner: 'Kirby McDonald', initials: 'KM', progress: 35, next: 'Complete human review', date: '16 Sep 2026', fit: 'High', value: 2600000 },
+      { score: 88, title: 'Primary Healthcare Service Delivery Strengthening', summary: 'Build resilient PHC systems', funder: 'WHO', country: 'Rwanda', focus: 'Primary healthcare', owner: 'Brendan Lawler', initials: 'BL', progress: 20, next: 'Review guidelines', date: '12 Sep 2026', fit: 'High', value: 1800000 },
+      { score: 81, title: 'UHC Implementation Support', summary: 'Technical assistance and capacity building', funder: 'Gates Foundation', country: 'Nigeria', focus: 'Universal health coverage', owner: 'Gráinne O\'Casey', initials: 'GO', progress: 10, next: 'Assess eligibility', date: '20 Sep 2026', fit: 'Medium', value: 1200000 }
+    ],
+    'Internal review': [
+      { score: 93, title: 'Health Financing Reform & Domestic Resource Mobilization', summary: 'Awaiting final pursuit decision', funder: 'World Bank', country: 'Kenya', focus: 'Health systems financing', owner: 'Lizeth Hernandez-Rubio', initials: 'LH', progress: 72, next: 'Confirm delivery team', date: '16 Sep 2026', fit: 'High', value: 2600000 },
+      { score: 90, title: 'Provider Payment Systems in Sub-Saharan Africa', summary: 'Evidence review in progress', funder: 'Gates Foundation', country: 'Rwanda', focus: 'Provider payments', owner: 'Jonty Roland', initials: 'JR', progress: 58, next: 'Approve to pursue', date: '13 Sep 2026', fit: 'High', value: 1400000 }
     ],
     Proposal: [
-      { score: 91, title: 'Provider Payment Reform Technical Assistance', summary: 'Proposal in production — technical approach in draft', funder: 'Global Fund', country: 'Tanzania', focus: 'Provider payments', owner: 'Sofia Reyes', initials: 'SR', progress: 60, next: 'Finalize technical approach', date: '28 Sep 2026', fit: 'High', value: 1100000 },
-      { score: 85, title: 'Community Health Worker Program Design', summary: 'Drafting workplan and budget narrative', funder: 'UNICEF', country: 'Uganda', focus: 'Service delivery', owner: 'Marcus Chen', initials: 'MC', progress: 45, next: 'Budget narrative', date: '6 Oct 2026', fit: 'High', value: 750000 },
-      { score: 77, title: 'Maternal Health Systems Strengthening', summary: 'Compliance matrix and team CVs in progress', funder: 'USAID', country: 'Nigeria', focus: 'Maternal health', owner: 'Amara Okafor', initials: 'AO', progress: 30, next: 'Compliance matrix', date: '11 Oct 2026', fit: 'Medium', value: 890000 }
+      { score: 91, title: 'Maternal Health Systems Strengthening', summary: 'Proposal production in progress', funder: 'UNFPA', country: 'Tanzania', focus: 'Maternal health', owner: 'Lizeth Hernandez-Rubio', initials: 'LH', progress: 75, next: 'Technical review', date: '28 Sep 2026', fit: 'High', value: 1100000 },
+      { score: 86, title: 'Digital Health for UHC', summary: 'Drafting technical approach', funder: 'European Union', country: 'Multiple countries', focus: 'Digital health', owner: 'Gráinne O\'Casey', initials: 'GO', progress: 40, next: 'Complete concept note', date: '15 Oct 2026', fit: 'High', value: 2400000 },
+      { score: 84, title: 'Health Workforce Capacity Building', summary: 'Team and workplan development', funder: 'World Bank', country: 'Ghana', focus: 'Health workforce', owner: 'Brendan Lawler', initials: 'BL', progress: 25, next: 'Assemble core team', date: '3 Nov 2026', fit: 'Medium', value: 900000 }
     ],
     Submitted: [
-      { score: 92, title: 'Health Information Systems Modernization', summary: 'Submitted · awaiting funder response', funder: 'World Bank', country: 'Zambia', focus: 'Health information systems', owner: 'Sofia Reyes', initials: 'SR', progress: 100, next: 'Funder response', date: '20 Sep 2026', fit: 'High', value: 1650000 },
-      { score: 84, title: 'Regional Health Financing Support', summary: 'Submitted · clarification window open', funder: 'African Development Bank', country: 'Rwanda', focus: 'Health financing', owner: 'Marcus Chen', initials: 'MC', progress: 100, next: 'Monitor response', date: '25 Sep 2026', fit: 'High', value: 940000 }
-    ],
-    Awarded: [
-      { score: 93, title: 'Primary Care Delivery Accelerator', summary: 'Awarded this month', funder: 'Global Fund', country: 'Kenya', focus: 'Primary healthcare', owner: 'Amara Okafor', initials: 'AO', progress: 100, next: 'Kickoff scheduled', date: '15 Sep 2026', fit: 'High', value: 510000 }
+      { score: 92, title: 'Health Systems Governance Advisory', summary: 'Submitted · awaiting response', funder: 'World Bank', country: 'Kenya', focus: 'Governance', owner: 'Lizeth Hernandez-Rubio', initials: 'LH', progress: 100, next: 'Funder response', date: '18 Sep 2026', fit: 'High', value: 1650000 },
+      { score: 87, title: 'Regional Health Financing Support', summary: 'Submitted · clarification window', funder: 'African Development Bank', country: 'Rwanda', focus: 'Health financing', owner: 'Kirby McDonald', initials: 'KM', progress: 100, next: 'Monitor response', date: '24 Sep 2026', fit: 'High', value: 940000 }
     ]
   };
 
   const plans = [
-    { title: 'Provider Payment Reform Technical Assistance', funder: 'Global Fund', country: 'Tanzania', due: '28 Sep 2026',
-      steps: [['Initial opportunity assessment', '10 Sep', true, 'Sofia Reyes'], ['Assemble core team', '13 Sep', true, 'Sofia Reyes · Marcus Chen'], ['Review funder guidelines', '17 Sep', true, 'Amara Okafor'], ['Develop technical approach', '24 Sep', false, 'Sofia Reyes'], ['Internal review and approval', '26 Sep', false, 'Marcus Chen'], ['Submit full proposal', '28 Sep', false, 'Proposal team']],
-      history: [['17 Sep', 'Funder guidelines reviewed', 'Global-Fund-guidelines.pdf'], ['13 Sep', 'Core team confirmed', 'Team-availability.xlsx'], ['10 Sep', 'Opportunity assessment completed', 'Assessment-v1.docx']] },
-    { title: 'Community Health Worker Program Design', funder: 'UNICEF', country: 'Uganda', due: '6 Oct 2026',
-      steps: [['Requirements mapped', '12 Sep', true, 'Marcus Chen'], ['Win themes agreed', '16 Sep', true, 'Marcus Chen · Sofia Reyes'], ['Draft workplan', '28 Sep', false, 'Amara Okafor'], ['Budget narrative', '2 Oct', false, 'Marcus Chen'], ['Pricing review', '5 Oct', false, 'Finance']],
-      history: [['16 Sep', 'Win themes approved', 'Win-themes-v2.docx'], ['12 Sep', 'Requirements mapped', 'Compliance-matrix.xlsx']] },
-    { title: 'Maternal Health Systems Strengthening', funder: 'USAID', country: 'Nigeria', due: '11 Oct 2026',
-      steps: [['Kickoff complete', '14 Sep', true, 'Amara Okafor'], ['Partner validation', '25 Sep', false, 'Sofia Reyes'], ['Draft outline', '3 Oct', false, 'Amara Okafor · Marcus Chen'], ['Team CVs', '9 Oct', false, 'People operations']],
-      history: [['14 Sep', 'Proposal kickoff held', 'Kickoff-notes.pdf']] }
+    { title: 'Maternal Health Systems Strengthening', funder: 'UNFPA', country: 'Tanzania', due: '28 Sep 2026',
+      steps: [['Initial opportunity assessment', '2 Sep', true, 'Kirby McDonald'], ['Assemble core team', '4 Sep', true, 'Kirby McDonald · Jonty Roland'], ['Review funder guidelines', '7 Sep', true, 'Gráinne O\'Casey'], ['Develop concept note', '16 Sep', false, 'Lizeth Hernandez-Rubio · Kirby McDonald'], ['Internal review and approval', '22 Sep', false, 'Jonty Roland'], ['Prepare full proposal', '6 Oct', false, 'Proposal team']],
+      history: [['7 Sep', 'Funder guidelines reviewed', 'UNFPA-guidelines.pdf'], ['4 Sep', 'Core team confirmed', 'Team-availability.xlsx'], ['2 Sep', 'Opportunity assessment completed', 'Assessment-v1.docx']] },
+    { title: 'Digital Health for UHC', funder: 'EU', country: 'Multiple countries', due: '15 Oct 2026',
+      steps: [['Requirements mapped', '5 Sep', true, 'Gráinne O\'Casey'], ['Win themes agreed', '8 Sep', true, 'Gráinne O\'Casey · Lizeth Hernandez-Rubio'], ['Draft technical approach', '24 Sep', false, 'Jonty Roland'], ['Past performance selected', '28 Sep', false, 'Lizeth Hernandez-Rubio'], ['Pricing review', '8 Oct', false, 'Finance · Maureen Lewis']],
+      history: [['8 Sep', 'Win themes approved', 'Win-themes-v2.docx'], ['5 Sep', 'Requirements mapped', 'Compliance-matrix.xlsx']] },
+    { title: 'Health Workforce Capacity Building', funder: 'World Bank', country: 'Ghana', due: '3 Nov 2026',
+      steps: [['Kickoff complete', '7 Sep', true, 'Brendan Lawler'], ['Partner validation', '18 Sep', false, 'Kirby McDonald'], ['Draft outline', '25 Sep', false, 'Brendan Lawler · Lizeth Hernandez-Rubio'], ['Team CVs', '2 Oct', false, 'People operations']],
+      history: [['7 Sep', 'Proposal kickoff held', 'Kickoff-notes.pdf']] }
   ];
   let activeStage = 'Qualified';
   let activePlan = 0;
+
+  const STAGES = ['Qualified', 'Internal review', 'Proposal', 'Submitted'];
+  const avg = list => list.length ? Math.round(list.reduce((a, x) => a + x.progress, 0) / list.length) : 0;
 
   function fmtValue(n) { return n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${Math.round(n / 1e3)}K`; }
 
   // Read by the Dashboard's pipeline funnel so the two views can never
   // show different numbers for the same example data.
   function pipelineStats() {
-    const stages = ['Qualified', 'Proposal', 'Submitted', 'Awarded'];
+    const stages = STAGES;
     const counts = stages.map(s => stageData[s].length);
     const totalValue = stages.reduce((sum, s) => sum + stageData[s].reduce((a, x) => a + x.value, 0), 0);
-    const awardedValue = stageData.Awarded.reduce((a, x) => a + x.value, 0);
     const items = stages.flatMap(s => stageData[s].map(x => ({ stage: s, title: x.title, funder: x.funder, country: x.country, owner: x.owner, progressPct: x.progress, nextAction: x.next, date: x.date, fit: x.fit, value: fmtValue(x.value) })));
-    return { stages, counts, totalValue, awardedValue, fmtValue, items };
+    return { stages, counts, totalValue, fmtValue, items };
   }
   window.pipelineStats = pipelineStats;
 
@@ -57,12 +62,13 @@
     return `<button class="pipeline-data-row" data-title="${escapeHtml(item.title)}"><span class="pipeline-check"><input type="checkbox" aria-label="Select ${escapeHtml(item.title)}"></span><span class="pipeline-opportunity"><strong class="stage-score">${item.score}</strong><span><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.summary)}</small></span></span><span><b>${escapeHtml(item.funder)} · ${escapeHtml(item.country)}</b><small>${escapeHtml(item.country)}</small></span><span><b>${escapeHtml(item.focus)}</b></span><span class="pipeline-owner"><i>${escapeHtml(item.initials)}</i><b>${escapeHtml(item.owner)}<small>Analyst</small></b></span><span class="pipeline-progress"><b>${item.progress}%</b><i><u style="width:${item.progress}%"></u></i></span><span class="pipeline-next"><b>${escapeHtml(item.next)}</b><small>${escapeHtml(item.date)}</small></span><span class="fit-pill ${item.fit.toLowerCase()}">${escapeHtml(item.fit)}</span><em>›</em></button>`;
   }
 
-  function renderStage() {
+  function renderStage(stage) {
+    if (typeof stage === 'string' && stageData[stage]) activeStage = stage;
     const stageSummary = [
       ['Qualified', stageData.Qualified.length, `${fmtValue(stageData.Qualified.reduce((a, x) => a + x.value, 0))} potential`],
-      ['Proposal', stageData.Proposal.length, `${Math.round(stageData.Proposal.reduce((a, x) => a + x.progress, 0) / stageData.Proposal.length)}% average progress`],
-      ['Submitted', stageData.Submitted.length, `${stageData.Submitted.length} awaiting response`],
-      ['Awarded', stageData.Awarded.length, 'Added this month']
+      ['Internal review', stageData['Internal review'].length, `${stageData['Internal review'].length} need decision`],
+      ['Proposal', stageData.Proposal.length, `${avg(stageData.Proposal)}% average progress`],
+      ['Submitted', stageData.Submitted.length, `${stageData.Submitted.filter(x => x.next === 'Funder response').length} response due`]
     ];
     const metrics = document.querySelector('#pipelineMetrics');
     if (metrics) {
@@ -153,5 +159,19 @@
   }
 
   window.renderPipeline = renderStage;
+
+  // The Today screen's stage strip mirrors the pipeline stages and numbers.
+  function renderTodayStrip() {
+    const strip = document.querySelector('#todayView .stage-strip'); if (!strip) return;
+    const cards = [
+      ['Qualified', 'Qualified', `${fmtValue(stageData.Qualified.reduce((a, x) => a + x.value, 0))} potential`],
+      ['Internal review', 'Internal review', `${stageData['Internal review'].length} need decision`],
+      ['Proposal', 'Proposals in progress', `${avg(stageData.Proposal)}% avg. completion`],
+      ['Submitted', 'Submitted', `${stageData.Submitted.filter(x => x.next === 'Funder response').length} response due`]
+    ];
+    strip.innerHTML = cards.map(([stage, label, copy]) => `<button data-stage="${stage}"><span>${stageData[stage].length}</span><div><b>${label}</b><small>${copy}</small></div><em>→</em></button>`).join('');
+    strip.querySelectorAll('[data-stage]').forEach(b => b.onclick = () => { window.showView('pipeline'); renderStage(b.dataset.stage); });
+  }
+  renderTodayStrip();
   document.addEventListener('DOMContentLoaded', () => { renderStage(); renderPlans(); renderDeliveryPlan(); });
 })();
