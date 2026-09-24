@@ -100,8 +100,11 @@
 
   function rebuildDashboard(){
     const view=q('#dashboardView');if(!view)return;
-    const relevantCount=typeof activeOpportunities==='function'?activeOpportunities().length:records.length;
-    const discardedCount=(typeof discarded!=='undefined'?discarded:[]).length;
+    // KPIs follow the reporting period chosen in dashboard-period.js.
+    const scope=typeof window.dashboardScope==='function'?window.dashboardScope():null;
+    const records=scope?scope.all:(typeof opportunities!=='undefined'?opportunities:[]);
+    const relevantCount=scope?scope.opps.length:(typeof activeOpportunities==='function'?activeOpportunities().length:records.length);
+    const discardedCount=scope?scope.excluded.length:(typeof discarded!=='undefined'?discarded:[]).length;
     const newCount=records.filter(o=>o.meta&&o.meta.dupStatus==='New').length,repeatedCount=records.filter(o=>o.meta&&(o.meta.dupStatus==='Repeated'||o.meta.dupStatus==='Updated')).length,dupCount=records.filter(o=>o.meta&&o.meta.dupStatus==='Possible Duplicate').length;
     const potentialValue=records.reduce((sum,o)=>{const match=/\$([0-9.]+)\s?(million|M|thousand|K)\b/i.exec(o.value||'');if(!match)return sum;const unit=match[2].toLowerCase();const mult=unit==='million'||unit==='m'?1e6:unit==='thousand'||unit==='k'?1e3:1;return sum+Number(match[1])*mult},0);
     const fmtValue=n=>n>=1e6?`$${(n/1e6).toFixed(1)}M`:n>=1e3?`$${Math.round(n/1e3)}K`:`$${n}`;
@@ -153,6 +156,7 @@
       dashboardCharts: safe(()=>window.dashboardChartData&&window.dashboardChartData()),
       discardedOpportunities: discardedList.slice(0,60).map(d=>({title:d[0],org:d[1],country:d[2],reason:d[3],source:d[4]})),
       examplePipeline: pipeline ? { note: 'This is illustrative example data for demos, not a real live pipeline.', stageOrder: pipeline.stages, stageCounts: pipeline.counts, totalPipelineValue: pipeline.fmtValue(pipeline.totalValue), proposals: pipeline.items } : null,
+      dashboardPeriod: typeof window.dashboardScope==='function' ? (s=>({ label: s.label, basis: 'publication date', shown: s.all.length+s.excluded.length, total: s.total, note: 'dashboardKpis-like numbers inside dashboardCharts and dashboardInsights are limited to this period; allRelevantOpportunities lists every result.' }))(window.dashboardScope()) : null,
       screeningCriteria: criteria ? { note: 'Criteria as edited on the Criteria screen (saved in this browser); the next search applies them.', ...criteria } : { note: 'The Criteria screen has not been edited in this browser, so searches use the backend defaults.' },
       knowledgeBase: { note: 'Knowledge base screen. Project summaries and team profiles come from Aceso Global\'s public website; "suggested" project links are expertise matches that still need validation against internal CVs, only "verified" links are confirmed.', projects: safe(()=>window.knowledgeBaseProjects&&window.knowledgeBaseProjects()), team: safe(()=>window.knowledgeBaseTeam&&window.knowledgeBaseTeam()) }
     };
@@ -205,6 +209,7 @@
     bindCopilot(panel);
   }
 
+  window.rebuildDashboard=rebuildDashboard;
   const priorShow=window.showView;
   window.showView=function(name){priorShow(name);if(name==='pipeline')setTimeout(installPipelineTools);if(name==='dashboard')rebuildDashboard()};
   qa('.navlinks button').forEach(b=>b.onclick=()=>window.showView(b.dataset.view));

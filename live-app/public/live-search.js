@@ -38,7 +38,11 @@
   }
 
   function mapResultToDiscarded(r) {
-    return [r.title, r.org, r.country, r.knockoutReason || 'Knocked out by a hard criteria rule', r.source];
+    // Positional row (read as d[0]…d[4] across the app) plus the result's
+    // meta, so the Dashboard period filter can read its publication date.
+    const row = [r.title, r.org, r.country, r.knockoutReason || 'Knocked out by a hard criteria rule', r.source];
+    row.meta = r.meta;
+    return row;
   }
 
   function sourceBadge(source) {

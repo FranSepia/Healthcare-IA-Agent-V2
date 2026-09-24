@@ -301,8 +301,10 @@
   // One computation shared by the charts and by Aceso Copilot, so Copilot
   // explains exactly the numbers on screen.
   function computeData() {
-    const opps = (typeof window.activeOpportunities === 'function' ? window.activeOpportunities() : window.opportunities) || [];
-    const discardedList = (typeof discarded !== 'undefined' ? discarded : []) || [];
+    // Scoped to the Dashboard's reporting period when dashboard-period.js is loaded.
+    const scope = typeof window.dashboardScope === 'function' ? window.dashboardScope() : null;
+    const opps = scope ? scope.opps : ((typeof window.activeOpportunities === 'function' ? window.activeOpportunities() : window.opportunities) || []);
+    const discardedList = scope ? scope.excluded : ((typeof discarded !== 'undefined' ? discarded : []) || []);
 
     const byPillar = {}; const byCountry = {}; const bySource = {}; const valueByPillar = {};
     const scoreSumBySource = {}; const scoreCountBySource = {}; const sourcePillarWeight = {}; const tierCounts = {};

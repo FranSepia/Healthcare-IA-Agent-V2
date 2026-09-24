@@ -1212,3 +1212,32 @@ body,button,input,textarea{font-family:var(--sans)}
 #criteriaView .flag-list .criteria-compact-row:has(.crit-code){grid-template-columns:35px minmax(0,1fr) auto 25px}
 #criteriaView .criteria-keyword-row{grid-template-columns:10px auto 18px}
 #criteriaView .criteria-keyword-row input{field-sizing:content;min-width:60px;max-width:260px}
+/* Dashboard reporting period filter */
+#dashboardView .dashboard-title-row{align-items:center!important}
+#dashboardView .dashboard-title-row>.period-slot{display:flex!important;flex-direction:column;align-items:flex-end;gap:6px;text-align:right;white-space:normal}
+#dashboardView .period-card{display:flex;align-items:center;gap:24px;flex-wrap:wrap;justify-content:flex-end;padding:12px 14px 12px 16px;background:#fff;border:1px solid #d7e4ee;border-radius:16px;box-shadow:0 6px 18px rgba(24,68,105,.06)}
+#dashboardView .period-summary{display:flex;align-items:center;gap:12px;text-align:left}
+#dashboardView .period-summary i{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#e6f2fb;border:1px solid #cfe3f3;color:#1580c6}
+#dashboardView .period-summary svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#dashboardView .period-summary small{display:block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7a8fa4}
+#dashboardView .period-summary strong{display:block;font:700 15px var(--sans);color:#0a2f57;white-space:nowrap}
+#dashboardView .period-tabs{display:flex;padding:5px;border-radius:12px;background:#eef3f8}
+#dashboardView .period-tabs button{border:0;background:none;padding:9px 18px;border-radius:9px;font:600 13px var(--sans);color:#5b7189;cursor:pointer;border-bottom:2px solid transparent}
+#dashboardView .period-tabs button:hover{color:#0a2f57}
+#dashboardView .period-tabs button.active{background:#fff;color:#0b5f9c;box-shadow:0 1px 3px rgba(16,45,82,.1);border-bottom-color:#f5bb27}
+#dashboardView .period-custom{display:flex;align-items:flex-end;gap:8px;flex-basis:100%;justify-content:flex-end}
+#dashboardView .period-custom label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;font-weight:600;color:#7a8fa4;text-align:left}
+#dashboardView .period-custom input{border:1px solid #cfdeea;border-radius:8px;padding:7px 9px;font:13px var(--sans);color:#0a2f57}
+#dashboardView .period-custom button{border:0;background:#0b4d7f;color:#fff;border-radius:8px;padding:9px 16px;font:600 13px var(--sans);cursor:pointer}
+#dashboardView .period-note{margin:0;font-size:11.5px;color:#7a8fa4}
+@media(max-width:720px){
+  #dashboardView .dashboard-title-row>.period-slot{align-items:stretch;text-align:left;width:100%}
+  #dashboardView .period-card{justify-content:flex-start}
+  #dashboardView .period-tabs{width:100%}
+  #dashboardView .period-tabs button{flex:1;padding:9px 6px}
+  #dashboardView .period-custom{justify-content:flex-start;flex-wrap:wrap}
+}
+/* Flex children default to min-width:auto and grow with a wide SVG instead of
+   letting .hours-plot scroll; pin them to the card width. */
+#dashboardView .analyst-hours>*,#dashboardView .hours-body,#dashboardView .hours-plot{min-width:0;max-width:100%}
+#dashboardView .dashboard-title-row>div.period-slot,#dashboardView .period-note{white-space:normal}

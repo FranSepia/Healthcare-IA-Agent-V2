@@ -110,7 +110,11 @@ function countryCentroid(rawName) {
 // data (window.opportunities, mutated in place by live-search.js after
 // every /api/search call) — grouped by country, one glowing point each.
 function computeActivity() {
-  const opps = (typeof window.activeOpportunities === 'function' ? window.activeOpportunities() : window.opportunities) || [];
+  // On the Dashboard the globe follows the reporting period; elsewhere it shows everything.
+  const onDashboard = document.querySelector('#dashboardView')?.classList.contains('active');
+  const opps = onDashboard && typeof window.dashboardScope === 'function'
+    ? window.dashboardScope().opps
+    : (typeof window.activeOpportunities === 'function' ? window.activeOpportunities() : window.opportunities) || [];
   const byCountry = new Map();
   for (const o of opps) {
     const country = (o.country || '').split(',')[0].split('(')[0].trim();
