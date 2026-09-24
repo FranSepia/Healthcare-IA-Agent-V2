@@ -112,8 +112,9 @@
     q('.simple-panel', view)?.remove();
     const p = typeof window.pipelineStats === 'function' ? window.pipelineStats() : null;
     if (!p) return;
-    const labels = { Qualified: 'To decide', Proposal: 'Writing', Submitted: 'Submitted', Awarded: 'Won' };
-    const waiting = p.items.filter(x => x.stage === 'Qualified' || x.stage === 'Submitted');
+    const labels = { Qualified: 'Qualified', 'Internal review': 'To decide', Proposal: 'Writing', Submitted: 'Submitted' };
+    // Internal review is where a pursuit decision is pending; Submitted awaits the funder.
+    const waiting = p.items.filter(x => x.stage === 'Internal review' || x.stage === 'Submitted');
     view.insertAdjacentHTML('afterbegin', `<section class="simple-panel simple-pipeline">
       <h1>Pipeline</h1><p class="simple-note">Example data until approvals are tracked in the app.</p>
       <div class="simple-stages">${p.stages.map((s, i) => `<div><b class="simple-fig">${p.counts[i]}</b><small>${labels[s] || s}</small></div>`).join('')}<div><b class="simple-fig">${p.fmtValue(p.totalValue)}</b><small>Total value</small></div></div>

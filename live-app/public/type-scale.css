@@ -50,13 +50,17 @@
 :is(h1,h1 *,.pw-hero h2,#_ts#_ts#_ts){font-size:var(--fs-l)!important}
 
 /* ---- Families and weights -------------------------------------------------
-   Two families, two weights:
-   • Titles (h1, h2, h3): Libre Caslon Display, regular.
-   • Everything else, including every figure: DM Sans, 400 or 600.
+   One family (DM Sans, as in the navigation), two weights:
+   • Page titles (h1): regular. Section and card titles (h2, h3): semibold.
+   • Body text: 400; emphasis and every figure: 600.
    Only DM Sans 400 and 600 are loaded (index.html), so any older rule asking
    for 500 renders at 400 and 700–900 render at 600 — one bold, one regular. */
 :is(body,body *,#_ts#_ts#_ts){font-family:var(--sans)!important}
-:is(h1,h1 *,h2,h2 *,h3,h3 *,#_ts#_ts#_ts){font-family:var(--serif)!important;font-weight:400!important;letter-spacing:0!important;text-transform:none!important}
+/* One family everywhere: the sans used in the navigation. The old serif token
+   now points to it too, so nothing renders in the serif. */
+:root{--serif:'DM Sans',Arial,sans-serif}
+:is(h1,h1 *,#_ts#_ts#_ts){font-family:var(--sans)!important;font-weight:400!important;letter-spacing:-.015em!important;text-transform:none!important}
+:is(h2,h2 *,h3,h3 *,#_ts#_ts#_ts){font-family:var(--sans)!important;font-weight:600!important;letter-spacing:-.01em!important;text-transform:none!important}
 /* Figures stay in the body family so numbers look the same on every screen. */
 :is(
   h1 .today-nine,
