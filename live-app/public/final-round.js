@@ -34,38 +34,6 @@
   let criteriaState=loadCriteriaState();
   saveCriteriaState();
 
-  const SECTIONS=[
-    {key:'How it decides',type:'flow'},
-    {key:'What we look for',type:'lists',groups:[['focusAreas','Focus areas'],['activities','Activities Aceso delivers']],
-      title:'What makes an opportunity a fit?',
-      purpose:'The topics and kinds of work Aceso delivers. The AI reads the whole notice, not just the title, and scores how well it matches these lists.',
-      uses:[['Reads the full notice','Objectives, deliverables and eligibility, not the title alone.'],['Scores the match','A core match scores high, adjacent work scores medium, anything outside these lists scores low.'],['Tags the main theme','The best-matching focus area becomes the theme tag shown on each opportunity.']],
-      example:'A tender mentions “health systems” but only buys equipment. The topic matches, the activity doesn’t, so it is excluded as goods procurement.'},
-    {key:'Where & who',type:'lists',groups:[['regions','Priority regions'],['fundersMDB','Development banks'],['fundersPhilanthropic','Foundations'],['fundersGov','Government aid agencies'],['fundersUS','U.S. government']],
-      title:'Where and with whom does Aceso want to work?',
-      purpose:'Priority regions and preferred funders raise the score. They are a bonus, never a requirement.',
-      uses:[['Finds the country and funder','Read directly from the notice.'],['Adds a bonus on a match','A listed region or funder pushes the fit score up.'],['Never excludes on its own','Places and funders not on these lists are still scored normally.']],
-      example:'A World Bank notice in Indonesia gets both bonuses. A strong CDC notice in Kenya is still scored normally, just without the regional bonus.'},
-    {key:'Exclude or flag',type:'rules'},
-    {key:'Sources & timing',type:'info'}
-  ];
-  const SOURCES=[
-    ['grantsGov','Grants.gov','Official Grants.gov API'],
-    ['worldBank','World Bank','World Bank procurement API'],
-    ['coefficientGiving','Coefficient Giving','Public funding page · AI separates real RFPs from news'],
-    ['unitaid','Unitaid','Public consultancies & RFPs page'],
-    ['undp','UNDP','Public procurement notices page'],
-    ['ungm','UNGM','UN Global Marketplace · read with a headless browser']
-  ];
-  let criterion=0, lastSearch=null;
-  const esc=v=>typeof escapeHtml==='function'?escapeHtml(v):String(v);
-
-  function chipTag(key,i,v){return `<span class="chip"><span>${esc(v)}</span><button type="button" data-remove="${i}" data-key="${key}" aria-label="Remove ${esc(v)}">×</button></span>`}
-  function addForm(key,mode,placeholder){return `<form class="chip-add" data-key="${key}" data-mode="${mode}"><input type="text" placeholder="${esc(placeholder)}" required><button type="button">+ Add</button></form>`}
-  function chipGroup(key,label){const arr=criteriaState[key]||[];return `<div class="chip-group"><h4>${label} <span>${arr.length}</span></h4><div class="chip-list">${arr.map((v,i)=>chipTag(key,i,v)).join('')}<form class="chip-add chip-add-inline" data-key="${key}" data-mode="chip"><input type="text" placeholder="+ Add" aria-label="Add to ${label}" required><button type="button" aria-label="Add">↵</button></form></div></div>`}
-  function checklist(key){const arr=criteriaState[key]||[];return `<div class="checklist-list compact">${arr.map((item,i)=>`<label class="checklist-item ${item.enabled?'':'off'}"><input type="checkbox" data-toggle="${i}" data-key="${key}" ${item.enabled?'checked':''}><span>${esc(item.label)}</span><button type="button" data-remove="${i}" data-key="${key}" aria-label="Remove">×</button></label>`).join('')}</div>${addForm(key,'item','Add a rule…')}`}
-  const fmtUSD=n=>n>=1e6?`$${(n/1e6).toFixed(n%1e6?1:0)}M`:`$${Math.round(n/1e3)}K`;
-
   // Exclusion reasons come from both code rules and the AI's own wording, so
   // map each one back to the rule it corresponds to before counting.
   function reasonLabel(raw){
@@ -91,54 +59,129 @@
       reasons:Object.entries(reasons).sort((a,b)=>b[1]-a[1]).slice(0,4)};
   }
 
-  function flowPages(){
-    const n=liveNumbers(), max=Math.max(1,n.found), pct=v=>Math.round(v/max*100);
-    const bar=(label,v,note,cls)=>`<div class="flow-bar ${cls}"><div class="flow-bar-label"><b data-count="${v}">0</b><span>${label}<small>${note}</small></span></div><i><u style="--w:${pct(v)}%"></u></i></div>`;
-    const reasonMax=Math.max(1,...n.reasons.map(r=>r[1]));
-    const steps=[['⇣','Collect','Open notices from Grants.gov, World Bank, Coefficient Giving, Unitaid, UNDP and UNGM.'],['⌫','Clean up','Notices whose deadline already passed are dropped; duplicates are merged.'],['✕','Knock-outs','Excluded only when a rule clearly applies. When in doubt, the notice stays.',3],['◎','Score 0–100','The AI compares the full notice with your lists: topic, activity, region, funder, budget, eligibility.',1],['△','Flag','Review flags like a tight deadline or an unpublished budget. A flag never excludes.',3],['✓','You decide','A person approves, rejects or recovers any case. The agent only recommends.']];
-    return `<article class="notebook-page flow-page"><p class="page-count">01 <span>/ 0${SECTIONS.length}</span></p><h2>How every opportunity is decided</h2><p>Every notice goes through the same route, and nothing disappears silently: each exclusion keeps its reason.</p>
-      ${n.found?'':'<p class="flow-empty">Run a search to see the last search’s numbers here.</p>'}
-      <h3>Last search, step by step</h3>
-      <div class="flow-bars">${bar('Collected',n.found,'from 6 public sources','fb-all')}${bar('Excluded by a rule',n.excluded,'kept with the exact reason','fb-out')}${bar('Scored by AI',n.scored,'fit score 0–100','fb-in')}</div>
-      <div class="flow-tiers"><span class="t-rec"><b data-count="${n.recommended}">0</b>Recommended<small>85+</small></span><span class="t-dec"><b data-count="${n.decision}">0</b>Decision needed<small>65–84</small></span><span class="t-low"><b data-count="${n.low}">0</b>Low fit<small>under 65</small></span></div>
-      ${n.reasons.length?`<h3>Why notices were excluded</h3><div class="flow-reasons">${n.reasons.map(([r,c])=>`<div><span>${esc(r)}</span><i><u style="--w:${Math.round(c/reasonMax*100)}%"></u></i><b>${c}</b></div>`).join('')}</div>`:''}
-    </article>
-    <article class="notebook-page flow-steps-page"><p class="eyebrow">THE AGENT’S ROUTE</p><h2>Six steps, one human decision</h2>
-      <ol class="flow-steps">${steps.map((s,i)=>`<li style="--i:${i}"${s[3]?` data-go="${s[3]}" title="See the rules"`:''}><i>${s[0]}</i><span><b>${s[1]}</b><p>${s[2]}</p></span>${s[3]?'<em>Edit →</em>':''}</li>`).join('')}</ol>
-      <aside class="worked-example"><small>GOOD TO KNOW</small><p>Every excluded notice can be reviewed and recovered from Opportunities › Discarded.${n.flagged?` In the last search, ${n.flagged} scored opportunities carry at least one review flag.`:''}</p></aside>
-    </article>`;
-  }
+  // Rules the backend checks in code on every search (lib/scoring.js
+  // runKnockouts / reconcileBudgetFlags). Every other rule is applied by the
+  // AI reading the notice, so it only runs while Gemini scoring is on.
+  const CODE_KNOCKOUTS=['Restricted to individual consultants, not firms','Excessive focus on physical infrastructure','Work located in a conflict area'];
+  const CODE_FLAGS=['Budget not published'];
+  let aiScoring=null;
+  fetch('/api/health').then(r=>r.json()).then(d=>{aiScoring=Boolean(d.geminiConfigured);if(q('#criteriaView')?.classList.contains('active'))renderNotebook(false)}).catch(()=>{});
 
-  function listPages(s){
-    return `<article class="notebook-page settings-page"><p class="page-count">0${criterion+1} <span>/ 0${SECTIONS.length}</span></p><h2>${s.title}</h2><p>${s.purpose}</p><div class="settings-heading"><h3>Your lists</h3><button type="button" id="resetCriterion" class="reset-link">↺ Reset to Aceso defaults</button></div><div class="chip-groups">${s.groups.map(([k,l])=>chipGroup(k,l)).join('')}</div></article>
-    <article class="notebook-page playbook-page"><p class="eyebrow">HOW THE AGENT USES THIS</p><h2>In plain words</h2><div class="notebook-actions">${s.uses.map((x,i)=>`<div><i>${i+1}</i><span><b>${x[0]}</b><p>${x[1]}</p></span></div>`).join('')}</div><aside class="worked-example"><small>EXAMPLE</small><p>${s.example}</p></aside></article>`;
-  }
+  const SOURCES=[
+    ['grantsGov','Grants.gov','U.S. federal grants','Official API'],
+    ['worldBank','World Bank','Projects & procurement','Official API'],
+    ['coefficientGiving','Coefficient Giving','Philanthropic funding','AI separates RFPs from news'],
+    ['unitaid','Unitaid','Global health procurement','Public notices page'],
+    ['undp','UNDP','Development procurement','Public notices page'],
+    ['ungm','UNGM','UN Global Marketplace','Read with a headless browser']
+  ];
+  const FUNDER_GROUPS=[['fundersMDB','Development banks'],['fundersPhilanthropic','Foundations'],['fundersGov','Government aid agencies'],['fundersUS','U.S. government']];
+  const CHIP_PREVIEW=8;
+  let criterion=0, side='agent', lastSearch=null;
+  const expanded={};
+  const esc=v=>typeof escapeHtml==='function'?escapeHtml(v):String(v);
+  const fmtUSD=n=>n>=1e6?`$${(n/1e6).toFixed(n%1e6?1:0)}M`:`$${Math.round(n/1e3)}K`;
 
-  function rulesPages(){
+  // ---- left-page controls ---------------------------------------------------
+  function chips(key,label,opts={}){
+    const arr=criteriaState[key]||[], open=expanded[key]||arr.length<=CHIP_PREVIEW, shown=open?arr:arr.slice(0,CHIP_PREVIEW);
+    return `<div class="nb-group${opts.sub?' sub':''}"><div class="nb-group-head"><h4>${label}<span>${arr.length}</span></h4>${opts.tag?`<em class="nb-tag" title="${esc(opts.tagTitle||'')}">${opts.tag}</em>`:''}</div>
+      <div class="nb-chips">${shown.map(v=>`<span class="nb-chip">${esc(v)}<button type="button" data-remove="${arr.indexOf(v)}" data-key="${key}" aria-label="Remove ${esc(v)}">×</button></span>`).join('')}${arr.length>CHIP_PREVIEW?`<button type="button" class="nb-more" data-expand="${key}">${open?'Show less':`+${arr.length-CHIP_PREVIEW} more`}</button>`:''}
+      <form class="chip-add nb-add-chip" data-key="${key}" data-mode="chip"><input type="text" placeholder="+ Add" aria-label="Add to ${label}" required><button type="button" aria-label="Add">↵</button></form></div>
+      ${!arr.length&&opts.empty?`<p class="nb-empty">${opts.empty}</p>`:''}</div>`;
+  }
+  function ruleList(key,sourceOf){
+    const arr=criteriaState[key]||[];
+    return `<div class="nb-rules">${arr.map((item,i)=>{const src=sourceOf(item.label);return `<label class="nb-rule ${item.enabled?'':'off'}"><input type="checkbox" data-toggle="${i}" data-key="${key}" ${item.enabled?'checked':''}><i class="nb-switch" aria-hidden="true"></i><span>${esc(item.label)}</span><em class="nb-src ${src}" title="${src==='code'?'Checked in code on every search':'Applied by the AI when it reads the notice'}">${src==='code'?'Code':'AI'}</em><button type="button" data-remove="${i}" data-key="${key}" aria-label="Remove ${esc(item.label)}">×</button></label>`}).join('')}</div>
+      <form class="chip-add nb-add-rule" data-key="${key}" data-mode="item"><input type="text" placeholder="Add a rule…" required><button type="button">+ Add</button></form>`;
+  }
+  const knockoutSource=l=>CODE_KNOCKOUTS.includes(l)?'code':'ai';
+  const flagSource=l=>CODE_FLAGS.includes(l)?'code':'ai';
+  const aiNote=()=>aiScoring===false?`<p class="nb-warn">AI scoring is off on this server, so only rules marked <b>Code</b> apply right now.</p>`:'';
+
+  function leftFocus(){
+    return `${chips('focusAreas','Focus areas',{tag:'AI + fallback',tagTitle:'Used by the AI and by the keyword fallback scorer'})}
+      ${chips('activities','Activities Aceso delivers',{tag:'AI',tagTitle:'Used by the AI when it reads the notice'})}`;
+  }
+  function leftGeo(){
+    const l=criteriaState.languages;
+    return `${chips('regions','Priority regions',{tag:'Bonus',tagTitle:'Raises the score; never excludes'})}
+      <div class="nb-group"><div class="nb-group-head"><h4>Preferred funders<span>${FUNDER_GROUPS.reduce((s,[k])=>s+(criteriaState[k]||[]).length,0)}</span></h4><em class="nb-tag" title="Raises the score; never excludes">Bonus</em></div></div>
+      <div class="nb-funders">${FUNDER_GROUPS.map(([k,label])=>chips(k,label,{sub:true,empty:'None yet'})).join('')}</div>`;
+  }
+  function leftOut(){
+    const l=criteriaState.languages, lang=(k,label)=>`<label class="nb-check"><input type="checkbox" data-lang="${k}" ${l[k]?'checked':''}><span>${label}</span></label>`;
+    return `${aiNote()}${ruleList('knockouts',knockoutSource)}
+      <div class="nb-sep"></div><div class="nb-group-head"><h4>Languages Aceso delivers in</h4><em class="nb-tag">AI</em></div>
+      <div class="nb-langs">${lang('english','English')}${lang('spanish','Spanish')}${lang('portuguese','Portuguese')}</div>`;
+  }
+  function leftFlag(){
     const b=criteriaState.budget,l=criteriaState.languages;
-    const lang=(k,label)=>`<label><input type="checkbox" data-lang="${k}" ${l[k]?'checked':''}><span>${label}</span></label>`;
-    return `<article class="notebook-page settings-page rules-out"><p class="page-count">04 <span>/ 0${SECTIONS.length}</span></p><div class="settings-heading"><h2><i class="rule-dot out">✕</i>Excluded outright</h2><button type="button" id="resetCriterion" class="reset-link">↺ Reset to Aceso defaults</button></div><p>Checked first. A notice is excluded only when a rule clearly applies, and the rule is saved with it. Switch a rule off and it stops being applied on the next search.</p>
-      ${checklist('knockouts')}
-      <h3>Languages Aceso delivers in</h3><div class="language-editor inline">${lang('english','English')}${lang('spanish','Spanish')}${lang('portuguese','Portuguese')}</div><p class="rules-hint">Any other language usually scores as low fit.</p></article>
-    <article class="notebook-page rules-flag"><p class="eyebrow">NEVER EXCLUDES</p><h2><i class="rule-dot flag">△</i>Kept, but flagged</h2><p>A flag travels with the opportunity so the reviewer knows what to check. An opportunity can carry several.</p>
-      <h3>Budget</h3><div class="budget-editor"><label class="budget-min"><span>Flag budgets below (USD)</span><input type="number" id="budgetMinInput" value="${b.min}" step="10000" min="0"></label><label class="budget-flag"><input type="checkbox" id="budgetFlagLarge" ${b.flagLarge?'checked':''}><span>Also flag budgets of $5M or more, to check delivery capacity</span></label></div>
-      <label class="budget-flag french-flag"><input type="checkbox" data-lang="frenchReview" ${l.frenchReview?'checked':''}><span>French notices go to human review instead of being scored as low fit</span></label>
-      <h3>Other flags</h3>${checklist('reviewFlags')}</article>`;
+    return `${aiNote()}<div class="nb-budget">
+        <label class="nb-field"><span>Flag budgets below (USD)</span><input type="number" id="budgetMinInput" value="${b.min}" step="10000" min="0"></label>
+        <div class="nb-fixed"><span>Tight deadline</span><b>Under 14 days</b><small>Fixed rule</small></div>
+      </div>
+      <label class="nb-rule nb-toggle-row ${b.flagLarge?'':'off'}"><input type="checkbox" id="budgetFlagLarge" ${b.flagLarge?'checked':''}><i class="nb-switch" aria-hidden="true"></i><span>Also flag budgets of $5M or more (capacity check)</span><em class="nb-src code">Code</em></label>
+      <label class="nb-rule nb-toggle-row ${l.frenchReview?'':'off'}"><input type="checkbox" data-lang="frenchReview" ${l.frenchReview?'checked':''}><i class="nb-switch" aria-hidden="true"></i><span>Send French notices to human review</span><em class="nb-src ai">AI</em></label>
+      <div class="nb-sep"></div><div class="nb-group-head"><h4>Review flags<span>${(criteriaState.reviewFlags||[]).filter(x=>x.enabled).length} on</span></h4></div>
+      ${ruleList('reviewFlags',flagSource)}`;
+  }
+  function leftSources(){
+    const src=lastSearch&&lastSearch.sources, when=lastSearch&&lastSearch.searchedAt?new Date(lastSearch.searchedAt).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}):null;
+    return `<div class="nb-sources">${SOURCES.map(([k,name,what,how],i)=>{const d=src&&src[k];const state=!d?'idle':d.ok?'ok':'down';return `<div class="nb-source ${state}" style="--i:${i}" title="${esc(how)}"><span class="src-dot"></span><b>${name}</b><small>${what}</small><strong>${d?(d.ok?`<em data-count="${d.count}">0</em> notices`:'Unavailable'):'—'}</strong></div>`}).join('')}</div>
+      <p class="nb-caption">${when?`Counts from the search of ${when}.`:'Counts appear after the next search.'} Sources are fixed; API keys live on the server.</p>
+      <div class="nb-sep"></div><div class="nb-group-head"><h4>Monitoring rules</h4><em class="nb-tag">Fixed</em></div>
+      <ul class="nb-facts"><li><b>On demand</b>A search runs only when someone presses Search now.</li><li><b>Closed notices</b>Dropped before scoring; they never appear.</li><li><b>Duplicates</b>Merged across sources.</li><li><b>No date, or no year</b>Kept, shown exactly as published.</li><li><b>Every search is saved</b>Results survive a reload.</li></ul>`;
   }
 
-  function infoPages(){
-    const src=lastSearch&&lastSearch.sources, when=lastSearch&&lastSearch.searchedAt?new Date(lastSearch.searchedAt).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}):null;
-    return `<article class="notebook-page info-page"><p class="page-count">05 <span>/ 0${SECTIONS.length}</span></p><h2>Where opportunities come from</h2><p>Six free public sources, searched only when you press Search now.${when?` Numbers from the search of ${when}.`:''}</p>
-      <div class="source-grid">${SOURCES.map(([k,name,how],i)=>{const d=src&&src[k];const state=!d?'idle':d.ok?'ok':'down';return `<div class="source-card ${state}" style="--i:${i}"><span class="src-dot"></span><b>${name}</b><small>${how}</small><strong>${d?(d.ok?`<em data-count="${d.count}">0</em> notices`:'Unavailable'):'Not searched yet'}</strong></div>`}).join('')}</div>
-      <p class="rules-hint">No credentials are stored in this interface. API keys live on the server.</p></article>
-    <article class="notebook-page timing-page"><p class="eyebrow">TIMING</p><h2>How deadlines are handled</h2>
-      <div class="deadline-track"><span class="dz past"><b>Passed</b><small>dropped</small></span><span class="dz soon"><b>Due soon</b><small>flagged</small></span><span class="dz ok"><b>Later</b><small>normal</small></span><i class="today-marker"><small>Today</small></i></div>
-      <div class="notebook-actions">
-        <div><i>1</i><span><b>Deadline already passed</b><p>Dropped before scoring. It never appears, not even in Discarded.</p></span></div>
-        <div><i>2</i><span><b>Due within about two weeks</b><p>Kept and scored, with a “Tight submission deadline” flag.</p></span></div>
-        <div><i>3</i><span><b>No date, or a date without a year</b><p>Kept, and shown exactly as published so a person can verify it.</p></span></div>
-        <div><i>4</i><span><b>Every search is saved</b><p>Results survive a reload. A new search runs only when you ask for it.</p></span></div>
-      </div></article>`;
+  // ---- right-page explanations (one side at a time) -------------------------
+  function lastSearchBox(){
+    const n=liveNumbers(); if(!n.found)return `<aside class="worked-example"><small>LAST SEARCH</small><p>Run a search to see its numbers here.</p></aside>`;
+    const max=Math.max(1,n.found), bar=(label,v,cls)=>`<div class="nb-bar ${cls}"><span>${label}</span><i><u style="--w:${Math.round(v/max*100)}%"></u></i><b data-count="${v}">0</b></div>`;
+    return `<aside class="worked-example nb-last"><small>LAST SEARCH</small>${bar('Collected',n.found,'all')}${bar('Excluded by a rule',n.excluded,'out')}${bar('Scored',n.scored,'in')}
+      <p class="nb-tiers"><span class="t-rec">${n.recommended} recommended</span><span class="t-dec">${n.decision} decision needed</span><span class="t-low">${n.low} low fit</span></p></aside>`;
+  }
+  function reasonsBox(){
+    const n=liveNumbers(); if(!n.reasons.length)return `<aside class="worked-example"><small>WORKED EXAMPLE</small><p>A notice buys only medical equipment. It matches “Excessive focus on physical infrastructure”, so it is excluded and the rule is saved with it.</p><b class="nb-out">Agent output: excluded — physical infrastructure</b></aside>`;
+    const max=Math.max(1,...n.reasons.map(r=>r[1]));
+    return `<aside class="worked-example nb-last"><small>WHY NOTICES WERE EXCLUDED · LAST SEARCH</small>${n.reasons.map(([r,c])=>`<div class="nb-bar out"><span title="${esc(r)}">${esc(r)}</span><i><u style="--w:${Math.round(c/max*100)}%"></u></i><b>${c}</b></div>`).join('')}</aside>`;
+  }
+
+  const PAGES=[
+    {nav:'Focus & activities',reset:['focusAreas','activities'],title:'What makes an opportunity a fit?',sub:'The themes and kinds of work the agent should prioritize.',left:leftFocus,
+      agent:{eyebrow:'HOW THE AGENT SCORES FIT',title:'It reads the whole notice and scores the match.',steps:[['Reads the full notice','Objectives, deliverables and eligibility, not just the title.'],['Scores 0–100','85+ Recommended · 65–84 Decision needed · under 65 Low fit.'],['Tags the main theme','The best-matching focus area becomes the theme on each opportunity.']],
+        box:()=>`<aside class="worked-example"><small>WORKED EXAMPLE</small><p>A tender mentions “health systems” but only buys equipment. The theme matches, the activity doesn’t.</p><b class="nb-out">Agent output: excluded — goods procurement</b></aside>`},
+      human:{eyebrow:'WHAT THE TEAM DECIDES',title:'The score is advice, not a decision.',steps:[['Keep the lists current','Add or remove a theme; it applies from the next search.'],['Review “Decision needed”','Every 65–84 score goes to a person before anything else.'],['Approve, reject or recover','From Opportunities, with the reason kept.']],
+        box:()=>`<aside class="worked-example"><small>EXAMPLE</small><p>A UHC advisory notice scores 72. An analyst reads the TOR and decides whether to pursue.</p><b class="nb-out">Agent: decision needed · Human: pursue or not</b></aside>`}},
+    {nav:'Geography & funders',reset:['regions','fundersMDB','fundersPhilanthropic','fundersGov','fundersUS'],title:'Where and with whom does Aceso want to work?',sub:'Preferences raise the score. They never exclude.',left:leftGeo,
+      agent:{eyebrow:'HOW PREFERENCES INFLUENCE SCORING',title:'A match adds to the score.',steps:[['Finds the country and funder','Read directly from the notice.'],['Adds a bonus on a match','A listed region or funder pushes the fit score up.'],['Never excludes on its own','Everything else is still scored normally.']],
+        box:()=>`<aside class="worked-example"><small>EXAMPLE</small><p>A World Bank notice in Indonesia gets both bonuses. A strong CDC notice in Kenya is still scored, just without the regional bonus.</p></aside>`},
+      human:{eyebrow:'WHAT THE TEAM DECIDES',title:'Decide where to stretch.',steps:[['Set the priorities','Regions and funders the firm wants to grow in.'],['Judge strong fits outside them','Out-of-region opportunities still reach you when the fit is high.'],['Vet new funders','Unknown funders arrive with an “Unfamiliar funder” flag.']],
+        box:()=>`<aside class="worked-example"><small>EXAMPLE</small><p>A foundation Aceso hasn’t worked with posts a strong RFP. The team checks the funder before deciding.</p></aside>`}},
+    {nav:'Excluded outright',reset:['knockouts','languages.english','languages.spanish','languages.portuguese'],title:'Excluded outright',sub:'Only clear hard stops remove a notice automatically.',left:leftOut,
+      agent:{eyebrow:'WHAT THE AGENT DOES',title:'When the agent excludes automatically',steps:[['Applies only explicit rules','A notice is excluded only when a rule clearly applies.'],['Keeps it traceable','The exact rule is saved with every exclusion.'],['When in doubt, keeps it','Anything uncertain goes to a person instead.']],box:reasonsBox},
+      human:{eyebrow:'WHAT THE TEAM DECIDES',title:'Nothing is lost.',steps:[['Review what was excluded','Opportunities › Discarded lists every case with its rule.'],['Recover any case','One click sends it back for human review.'],['Loosen a rule','Switch it off here; it stops on the next search.']],
+        box:()=>`<aside class="worked-example"><small>EXAMPLE</small><p>Excluded for “Local incorporation required”, but a local partner could apply.</p><b class="nb-out">Human decision: recover for review</b></aside>`}},
+    {nav:'Kept, but flagged',reset:['reviewFlags','budget','languages.frenchReview'],title:'Kept, but flagged',sub:'Visible, scored normally, with a note for the reviewer.',left:leftFlag,
+      agent:{eyebrow:'WHAT THE AGENT DOES',title:'A flag never excludes.',steps:[['Budget flags come from the value','Computed from the published budget, in code.'],['Other flags come from the notice','The AI adds only the flags switched on here.'],['Several can apply','Each travels with the opportunity to the reviewer.']],
+        box:()=>`<aside class="worked-example"><small>WORKED EXAMPLE</small><p>No budget is published and the deadline is 10 days away.</p><b class="nb-out">Agent flags: budget not published, tight deadline</b></aside>`},
+      human:{eyebrow:'WHAT THE TEAM DECIDES',title:'People decide what a flag means.',steps:[['Agent documents concerns','Each flag has a clear reason.'],['People review and decide','Pursue, staff or submit — or let it go.'],['Tune the flags','Switch off flags that add noise; add ones the team needs.']],
+        box:()=>`<aside class="worked-example"><small>EXAMPLE</small><p>A strong-fit notice is flagged “Unclear eligibility”. The team confirms with the funder and keeps it.</p><b class="nb-out">Human decision: keep for review</b></aside>`}},
+    {nav:'Sources & monitoring',reset:[],title:'Where opportunities come from',sub:'Six public sources, and how the monitoring layer works.',left:leftSources,
+      agent:{eyebrow:'HOW MONITORING WORKS',title:'Collect, clean up, screen, score.',steps:[['Collects','Open notices from the six sources on the left.'],['Cleans up','Drops closed notices and merges duplicates.'],['Screens and scores','Rules first, then a 0–100 fit score with its reasons.']],box:lastSearchBox},
+      human:{eyebrow:'WHEN MUST A HUMAN DECIDE?',title:'Every pursuit decision belongs to people.',steps:[['Review recommendations','Recommended and Decision needed arrive ready to read.'],['Decide pursuit and staffing','Approve, reject or recover — with the reason kept.'],['Own the submission','Proposals move through Pipeline under the team’s control.']],
+        box:()=>`<aside class="worked-example nb-rule-box"><small>DECISION RULE</small><p><b>The agent recommends and documents. It never makes the final pursuit or submission decision.</b></p></aside>`}}
+  ];
+
+  function rightPage(p){
+    const e=p[side];
+    return `<article class="notebook-page nb-right"><div class="nb-sides" role="tablist" aria-label="Explanation">${['agent','human'].map(k=>`<button type="button" role="tab" aria-selected="${side===k}" class="${side===k?'active':''}" data-side="${k}">${k==='agent'?'Agent':'Human'}</button>`).join('')}</div>
+      <div class="nb-explain" data-side-panel="${side}"><p class="eyebrow">${e.eyebrow}</p><h2>${e.title}</h2>
+      <ol class="nb-steps">${e.steps.map((s,i)=>`<li style="--i:${i}"><i>${i+1}</i><span><b>${s[0]}</b><p>${s[1]}</p></span></li>`).join('')}</ol>${e.box()}</div></article>`;
+  }
+  function leftPage(p){
+    return `<article class="notebook-page nb-left"><div class="nb-left-head"><p class="page-count">CRITERION 0${criterion+1} <span>/ 0${PAGES.length}</span></p>${p.reset.length?'<button type="button" id="resetCriterion" class="reset-link">↺ Reset to Aceso defaults</button>':''}</div>
+      <h2>${p.title}</h2><p class="nb-sub">${p.sub}</p><div class="nb-controls">${p.left()}</div></article>`;
   }
 
   function animateNotebook(view){
@@ -147,38 +190,39 @@
     requestAnimationFrame(()=>requestAnimationFrame(()=>view.querySelector('.criteria-notebook')?.classList.add('animate-in')));
   }
 
-  function resetSection(s){
-    const keys=s.type==='lists'?s.groups.map(g=>g[0]):s.type==='rules'?['knockouts','reviewFlags','budget','languages']:[];
-    keys.forEach(k=>{criteriaState[k]=JSON.parse(JSON.stringify(DEFAULT_CRITERIA_STATE[k]))});saveCriteriaState();
+  function resetSection(p){
+    // "languages.x" resets one field, so pages sharing the languages object
+    // (Excluded outright vs Kept, but flagged) don't reset each other.
+    p.reset.forEach(k=>{const [a,b]=k.split('.');if(b)criteriaState[a][b]=DEFAULT_CRITERIA_STATE[a][b];else criteriaState[a]=JSON.parse(JSON.stringify(DEFAULT_CRITERIA_STATE[a]))});saveCriteriaState();
   }
 
   function bindSettings(view){
     const changed=m=>{saveCriteriaState();say(m||'Saved. Applied on the next search.')};
-    qa('[data-remove]',view).forEach(btn=>btn.onclick=()=>{criteriaState[btn.dataset.key].splice(Number(btn.dataset.remove),1);changed();renderNotebook(false)});
-    qa('[data-toggle]',view).forEach(input=>input.onchange=()=>{criteriaState[input.dataset.key][Number(input.dataset.toggle)].enabled=input.checked;input.closest('.checklist-item')?.classList.toggle('off',!input.checked);changed()});
+    qa('[data-remove]',view).forEach(btn=>btn.onclick=e=>{e.preventDefault();criteriaState[btn.dataset.key].splice(Number(btn.dataset.remove),1);changed();renderNotebook(false)});
+    qa('[data-toggle]',view).forEach(input=>input.onchange=()=>{criteriaState[input.dataset.key][Number(input.dataset.toggle)].enabled=input.checked;input.closest('.nb-rule')?.classList.toggle('off',!input.checked);changed(input.checked?'Rule on. Applied on the next search.':'Rule off. It stops on the next search.')});
     qa('.chip-add',view).forEach(form=>{
       const key=form.dataset.key,mode=form.dataset.mode,input=form.querySelector('input');
-      const commit=()=>{const val=input.value.trim();if(!val)return;const list=criteriaState[key]||(criteriaState[key]=[]);const exists=list.some(x=>(typeof x==='string'?x:x.label).toLowerCase()===val.toLowerCase());if(exists){say('Already in the list.');return}list.push(mode==='chip'?val:{id:key+'-'+Date.now(),label:val,enabled:true});changed();renderNotebook(false)};
+      const commit=()=>{const val=input.value.trim();if(!val)return;const list=criteriaState[key]||(criteriaState[key]=[]);const exists=list.some(x=>(typeof x==='string'?x:x.label).toLowerCase()===val.toLowerCase());if(exists){say('Already in the list.');return}list.push(mode==='chip'?val:{id:key+'-'+Date.now(),label:val,enabled:true});if(mode==='chip')expanded[key]=true;changed();renderNotebook(false)};
       form.querySelector('button').onclick=commit;form.onsubmit=e=>{e.preventDefault();commit()};
     });
     const min=q('#budgetMinInput',view);if(min)min.onchange=e=>{criteriaState.budget.min=Math.max(0,Number(e.target.value)||0);changed(`Budget flag set below ${fmtUSD(criteriaState.budget.min)}.`)};
-    const large=q('#budgetFlagLarge',view);if(large)large.onchange=e=>{criteriaState.budget.flagLarge=e.target.checked;changed()};
-    qa('[data-lang]',view).forEach(input=>input.onchange=()=>{criteriaState.languages[input.dataset.lang]=input.checked;changed()});
-    qa('[data-go]',view).forEach(li=>li.onclick=()=>{criterion=Number(li.dataset.go);renderNotebook()});
+    const large=q('#budgetFlagLarge',view);if(large)large.onchange=e=>{criteriaState.budget.flagLarge=e.target.checked;e.target.closest('.nb-rule')?.classList.toggle('off',!e.target.checked);changed()};
+    qa('[data-lang]',view).forEach(input=>input.onchange=()=>{criteriaState.languages[input.dataset.lang]=input.checked;input.closest('.nb-rule')?.classList.toggle('off',!input.checked);changed()});
+    qa('[data-expand]',view).forEach(btn=>btn.onclick=()=>{expanded[btn.dataset.expand]=!expanded[btn.dataset.expand];renderNotebook(false)});
+    qa('[data-side]',view).forEach(btn=>btn.onclick=()=>{side=btn.dataset.side;renderNotebook(false)});
   }
 
   function renderNotebook(animate=true){
-    const view=q('#criteriaView'),s=SECTIONS[criterion]; if(!view)return;
-    const total=SECTIONS.length, n=liveNumbers();
-    const pages=s.type==='flow'?flowPages():s.type==='lists'?listPages(s):s.type==='rules'?rulesPages():infoPages();
-    view.innerHTML=`<header class="notebook-head"><div><p class="eyebrow">SEARCH & DECISION CRITERIA</p><h1>How the opportunity agent decides</h1><p>Five pages: how a decision is made, what Aceso looks for, and what gets excluded or flagged. Every edit is saved and applied on the next search.</p></div><aside><b>LAST SEARCH</b><strong>${n.scored}</strong><span>ready for review</span><small>${n.excluded} excluded with a traceable reason</small></aside></header>
-      <section class="criteria-notebook criteria-v3 type-${s.type}${animate?'':' animate-in'}"><i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i><i class="ring r4"></i>${pages}</section>
-      <footer class="notebook-footer"><button id="criterionPrev" ${criterion===0?'disabled':''}>← Previous</button><nav>${SECTIONS.map((x,i)=>`<button data-criterion="${i}" class="${i===criterion?'active':i<criterion?'done':''}"><i>${i+1}</i><span>${x.key}</span></button>`).join('')}</nav><button id="criterionNext">${criterion===total-1?'Back to start':'Next →'}</button></footer>`;
+    const view=q('#criteriaView'),p=PAGES[criterion]; if(!view)return;
+    const total=PAGES.length, n=liveNumbers();
+    view.innerHTML=`<header class="notebook-head"><div><p class="eyebrow">SEARCH & DECISION CRITERIA</p><h1>How the opportunity agent works</h1><p>Set what the agent looks for, and see exactly where human judgment begins. Changes save automatically and apply on the next search.</p></div><aside><b>LAST SEARCH</b><strong>${n.scored}</strong><span>ready for review</span><small>${n.excluded} excluded with a traceable reason</small></aside></header>
+      <section class="criteria-notebook criteria-v4${animate?'':' animate-in'}"><i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i><i class="ring r4"></i>${leftPage(p)}${rightPage(p)}</section>
+      <footer class="notebook-footer"><button id="criterionPrev" ${criterion===0?'disabled':''}>← Previous</button><nav>${PAGES.map((x,i)=>`<button data-criterion="${i}" class="${i===criterion?'active':i<criterion?'done':''}"><i>${i<criterion?'✓':i+1}</i><span>${x.nav}</span></button>`).join('')}</nav><button id="criterionNext">${criterion===total-1?'Back to start':'Next →'}</button></footer>`;
     qa('[data-criterion]',view).forEach(b=>b.onclick=()=>{criterion=Number(b.dataset.criterion);renderNotebook()});
     q('#criterionPrev',view).onclick=()=>{if(criterion){criterion--;renderNotebook()}};
     q('#criterionNext',view).onclick=()=>{criterion=criterion<total-1?criterion+1:0;renderNotebook()};
     bindSettings(view);
-    const reset=q('#resetCriterion',view);if(reset)reset.onclick=()=>{resetSection(s);renderNotebook(false);say('Reset to Aceso defaults.')};
+    const reset=q('#resetCriterion',view);if(reset)reset.onclick=()=>{resetSection(p);renderNotebook(false);say('Reset to Aceso defaults.')};
     if(animate)animateNotebook(view);else qa('[data-count]',view).forEach(el=>el.textContent=el.dataset.count);
   }
 
