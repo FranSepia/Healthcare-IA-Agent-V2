@@ -75,6 +75,40 @@
     return `<div class="doc-tiles">${tiles}</div>${merged}`;
   }
 
+  // Chapters 01 and 02 open folded: one line that sums up the whole chapter,
+  // and "Show details" for the explanation, bars, flags and requirement table.
+  function foldChapter(chapter,summary){
+    const h2=qs('h2',chapter); if(!h2)return;
+    const body=document.createElement('div'); body.className='chapter-body';
+    while(h2.nextSibling) body.appendChild(h2.nextSibling);
+    chapter.classList.add('collapsible');
+    h2.insertAdjacentHTML('afterend',`<div class="chapter-summary"><p>${summary}</p><button type="button" class="chapter-toggle" aria-expanded="false"><span>Show details</span><i aria-hidden="true">⌄</i></button></div>`);
+    chapter.appendChild(body);
+    const btn=qs('.chapter-toggle',chapter);
+    btn.onclick=()=>{const open=chapter.classList.toggle('open');btn.setAttribute('aria-expanded',String(open));qs('span',btn).textContent=open?'Hide details':'Show details';};
+  }
+  function foldRecordChapters(root,o,fitTier){
+    const [assessment,eligibility]=qsa('.record-chapter',root);
+    const m=o.meta||{},flags=m.reviewFlags||[];
+    if(assessment){
+      const tier=fitTier.startsWith('Strong')?'Strong fit':fitTier.startsWith('Low')?'Low fit':'Potential fit';
+      const checks=qsa('.assessment-alerts>span',assessment).length;
+      const parts=[...flags.map(escapeHtml)];
+      if(checks)parts.push(`${checks} point${checks===1?'':'s'} to confirm before pursuing`);
+      foldChapter(assessment,`<b>${tier} · ${o.score}%.</b> ${parts.join(' · ')}${parts.length?'.':''}`);
+    }
+    if(eligibility){
+      const rows=qsa('.elig-table>div',eligibility).map(r=>({name:qs('b',r).textContent,status:(qs('em',r).className.match(/elig-(\w+)/)||[])[1]}));
+      const verified=rows.filter(r=>r.status==='verified').length;
+      const confirm=rows.filter(r=>r.status==='pending').map(r=>r.name);
+      const missing=rows.filter(r=>r.status==='unknown').length;
+      const parts=[];
+      if(confirm.length)parts.push(`To confirm: ${escapeHtml(confirm.join(', '))}`);
+      if(missing)parts.push(`${missing} not stated in the notice`);
+      foldChapter(eligibility,`<b>${verified} of ${rows.length} requirements verified.</b> ${parts.join(' · ')}${parts.length?'.':''}`);
+    }
+  }
+
   function showOpportunityRecord(o={}){
     active=o; if(typeof closeDrawer==='function') closeDrawer(); showPage('detail');
     const root=qs('#detailContent'); if(!root)return;
@@ -95,6 +129,7 @@
         <article class="decision-route-full"><p class="eyebrow">DECISION ROUTE</p><h2>From opportunity to approval</h2>${['Opportunity mapping','Fit ranking','Aceso workspace','Analyst review','BD Manager','Finance & Director'].map((x,i)=>`<div class="${i<3?'done':i===3?'active':''}"><i>${i<3?'✓':''}</i><span><b>${x}</b><small>${i<3?'Completed':i===3?'Current step — finalise recommendation.':'Pending'}</small></span></div>`).join('')}</article>
         <article class="next-human"><p class="eyebrow">NEXT HUMAN DECISION</p><h2>Confirm country and eligibility requirements</h2><p>Validate the participation route for ${escapeHtml(o.country)} and resolve any remaining eligibility questions before committing proposal capacity.</p><small>SUBMISSION DEADLINE <b>${escapeHtml(o.due)}</b></small><button data-approve>Approve to pursue</button><button data-clarify>Request clarification</button></article>
       </aside></div></section>`;
+    foldRecordChapters(root,o,fitTier);
     setupRecordInteractions();
   }
 

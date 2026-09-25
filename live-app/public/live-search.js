@@ -101,10 +101,13 @@
       container.innerHTML = '<p style="padding:18px 4px;color:var(--muted);font-size:13px">No opportunities were excluded in this search.</p>';
       return;
     }
+    // When the source badge and the funder are the same (World Bank, UNDP…)
+    // the funder is not repeated next to it.
+    const sameAsSource = d => d[4] && d[1] && String(d[1]).trim().toLowerCase() === String(d[4]).trim().toLowerCase();
     container.innerHTML = discarded.map((d, i) => `
       <article class="excluded-case ${i === 0 ? 'open' : ''}">
         <button class="excluded-case-head no-flag" aria-expanded="${i === 0}">
-          <span class="excluded-case-title"><small>${sourceBadge(d[4])}${escapeHtml(d[1])} · ${escapeHtml(d[2])}</small><b>${escapeHtml(d[0])}</b></span>
+          <span class="excluded-case-title"><small>${sourceBadge(d[4])}${sameAsSource(d) ? '' : `${escapeHtml(d[1])} · `}${escapeHtml(d[2])}</small><b>${escapeHtml(d[0])}</b></span>
           <span class="excluded-case-reason" title="${escapeHtml(d[3])}">${escapeHtml(d[3])}</span><span class="case-chevron">›</span>
         </button>
         <div class="excluded-explanation"><small>WHY THIS IS NOT A MATCH</small><p>${escapeHtml(d[3])}</p><div><button class="keep-excluded">Keep excluded</button><button class="recover-case">Recover for human review</button></div></div>

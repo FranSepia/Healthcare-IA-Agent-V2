@@ -1453,3 +1453,22 @@ body,button,input,textarea{font-family:var(--sans)}
 /* The closed side panel sits just off-screen; without this its shadow
    tints the right edge of every page. */
 .quick-drawer:not(.show){box-shadow:none}
+/* Automatically excluded list: the full title first, the reason on its own
+   line below it, so neither one hides the other. */
+#excludedContent .excluded-case-head.no-flag{grid-template-columns:minmax(0,1fr) 26px!important;grid-template-rows:auto auto;row-gap:8px;align-items:start}
+#excludedContent .excluded-case-head.no-flag .excluded-case-title{grid-column:1;grid-row:1}
+#excludedContent .excluded-case-head.no-flag .excluded-case-title b{white-space:normal;overflow:visible;text-overflow:clip}
+#excludedContent .excluded-case-head.no-flag .excluded-case-reason{grid-column:1;grid-row:2;justify-self:start;max-width:100%;white-space:normal;overflow:visible;text-overflow:clip;border-radius:8px;line-height:1.45;text-align:left}
+#excludedContent .excluded-case-head.no-flag .case-chevron{grid-column:2;grid-row:1/3;align-self:center}
+
+/* Full record: chapters 01 and 02 folded behind a one-line summary. */
+.record-chapter.collapsible .chapter-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;padding:14px 16px;border:1px solid #dce7f1;border-radius:12px;background:#f7fafd}
+.record-chapter.collapsible .chapter-summary p{margin:0;color:#23405e}
+.record-chapter.collapsible .chapter-summary b{color:#0a315c;font-weight:600}
+.record-chapter .chapter-toggle{flex:none;display:inline-flex;align-items:center;gap:6px;border:0;border-radius:6px;background:none;padding:4px 8px;color:#0b5f9c;font-weight:600;cursor:pointer}
+.record-chapter .chapter-toggle:hover{background:#eef3f8}
+.record-chapter .chapter-toggle i{font-style:normal;transition:transform .2s}
+.record-chapter.open .chapter-toggle i{transform:rotate(180deg)}
+.record-chapter.collapsible:not(.open) .chapter-body{display:none}
+.record-chapter.collapsible .chapter-body{margin-top:16px}
+@media(max-width:700px){.record-chapter.collapsible .chapter-summary{flex-direction:column;align-items:flex-start}}
