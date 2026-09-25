@@ -1408,3 +1408,48 @@ body,button,input,textarea{font-family:var(--sans)}
 /* Pipeline panels: the action button sits at the end, not floating over the plan. */
 .pipeline-drawer .drawer-actions{position:static!important;padding-top:18px}
 @media(max-width:720px){#pipelineView .pl-period-tabs{width:100%}#pipelineView .pl-period-tabs button{flex:1;padding:8px 4px}#pipelineView .pl-period-custom{justify-content:flex-start;flex-wrap:wrap}}
+
+/* Home (Opportunities) layout: one column. The hero, the tab bar and every
+   card below share the same outer edges (the header's content edges), the
+   same 16px vertical rhythm, the same 20px inner padding, border, radius and
+   shadow. The page keeps one flat background, so collapsing the list never
+   leaves a tinted band above it. */
+#todayView{--home-gutter:38px;--home-col:min(1384px,calc(100% - 2 * var(--home-gutter)));--home-line:#dce7f1;--home-shadow:0 1px 2px rgba(16,45,82,.04),0 6px 18px rgba(16,45,82,.035);background:transparent}
+@media(max-width:760px){#todayView{--home-gutter:18px}}
+#todayView>.today-master,#todayView>#opportunityHubTabs,#todayView>.today-zone,#todayView>#hubPanel{box-sizing:border-box;width:var(--home-col);max-width:none;margin-left:auto;margin-right:auto}
+#todayView>.today-zone,#todayView>#hubPanel{margin-top:16px;padding-left:0;padding-right:0}
+#todayView>.today-zone{padding-bottom:56px}
+#todayView>#hubPanel{margin-bottom:56px}
+
+/* Hero card */
+#todayView>.today-master{margin-top:20px;padding:20px;gap:20px;border:1px solid var(--home-line);border-radius:15px;box-shadow:var(--home-shadow)}
+#todayView>.today-master .hero-copy{padding-top:4px}
+#todayView>.today-master .radar-card{border-radius:12px}
+#todayView>.today-master .daily-brief{margin-top:16px;border-radius:12px}
+
+/* Figures under the briefing: icon and number on one line, the label below
+   across the full card width, all three cards top-aligned. */
+#todayView .today-impact{gap:12px;margin-top:12px}
+#todayView .today-impact>div{grid-template-columns:32px minmax(0,1fr);grid-template-rows:auto auto;column-gap:10px;row-gap:6px;align-items:center;align-content:start;min-height:0;padding:14px 16px;border-color:var(--home-line);border-radius:12px}
+#todayView .today-impact>div>span{grid-row:1;grid-column:1;width:32px;height:32px;font-size:15px}
+#todayView .today-impact>div>b{grid-row:1;grid-column:2;line-height:1.2}
+#todayView .today-impact>div>small{grid-row:2;grid-column:1/-1;line-height:1.35}
+
+/* Tab bar: a complete card (all four corners rounded), not the top half of
+   one, so it reads the same with the list shown or hidden. */
+#todayView>#opportunityHubTabs{height:54px;margin-top:16px;padding:0 20px;gap:28px;align-items:stretch;border:1px solid var(--home-line);border-radius:15px;background:#fff;box-shadow:var(--home-shadow)}
+#todayView>#opportunityHubTabs [data-hub]{height:auto;padding:0}
+#todayView>#opportunityHubTabs .hub-toggle{align-self:center;margin-right:-8px}
+
+/* Cards below the tabs: same border, radius and spacing as the hero. */
+#todayView>.today-zone>.section-title:first-child,#todayView>.today-zone>.stage-strip,#todayView>.today-zone>.section-title.compact,#todayView>.today-zone .opportunity-table-shell{border-color:var(--home-line)}
+#todayView>.today-zone>.section-title.compact{margin-top:16px}
+
+@media(max-width:760px){
+  #todayView>.today-master{padding:16px}
+  #todayView>#opportunityHubTabs{gap:18px;padding:0 14px;overflow-x:auto;overflow-y:hidden}
+  #todayView>#opportunityHubTabs [data-hub]{flex:none}
+}
+/* The closed side panel sits just off-screen; without this its shadow
+   tints the right edge of every page. */
+.quick-drawer:not(.show){box-shadow:none}

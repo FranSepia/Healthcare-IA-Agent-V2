@@ -99,3 +99,6 @@ svg text{font-family:var(--sans)!important}
 :is(#knowledgeContent .experience-search .search-glyph,#_ts#_ts#_ts#_ts){font-size:26px!important;line-height:1!important}
 /* Pipeline stage cards: stage names at title size. */
 :is(#pipelineMetrics button>span,#_ts#_ts#_ts#_ts){font-size:var(--fs-m)!important;font-weight:600!important;color:#0a315c!important;letter-spacing:-.01em!important}
+/* Opportunity list titles: compact, one step above body text. */
+:is(.opp-row .opp-main h3,#_ts#_ts#_ts#_ts){font-size:15px!important;line-height:1.4!important;font-weight:600!important;letter-spacing:0!important}
+@media(max-width:760px){:is(.hero-copy h1,.hero-copy h1 *,#_ts#_ts#_ts#_ts){font-size:32px!important}}
