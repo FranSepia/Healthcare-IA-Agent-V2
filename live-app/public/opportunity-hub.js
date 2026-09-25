@@ -35,29 +35,39 @@
 
   function fill(tab) {
     if (tab === 'today' || !render[tab]) return;
-    const y = window.scrollY;
+    // Empty the panel first: the previous list holds the same element ids the
+    // renderers look up, so it would otherwise receive the new content.
+    panel.replaceChildren();
     render[tab]();                        // draws into #opportunitiesView and switches to it
     const source = q('#opportunitiesView');
     panel.replaceChildren(...[...source.children].filter(el => !el.matches('.opportunity-hub-tabs,.opportunities-master-head,.opportunities-tabs,.subnav')));
     window.showView('today');             // stay on the hub, hero intact
-    window.scrollTo(0, y);
   }
 
+  // Switching tabs never moves the page: the scroll position is restored
+  // after the renderers (which briefly switch screens) have run.
+  function keepScroll(fn) {
+    const y = window.scrollY;
+    fn();
+    window.scrollTo(0, y);
+    requestAnimationFrame(() => window.scrollTo(0, y));
+  }
   function choose(tab) {
-    if (open === tab) { open = null; paint(); return; } // clicking the open tab folds it
-    open = tab;
-    fill(tab);
-    paint();
-    tabs.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    keepScroll(() => {
+      if (open === tab) { open = null; paint(); return; } // clicking the open tab folds it
+      open = tab;
+      fill(tab);
+      paint();
+    });
   }
 
   qa('[data-hub]', tabs).forEach(b => { b.onclick = () => choose(b.dataset.hub); });
-  toggle.onclick = () => { if (open === null) choose('today'); else { open = null; paint(); } };
+  toggle.onclick = () => { if (open === null) choose('today'); else keepScroll(() => { open = null; paint(); }); };
   const review = q('.daily-brief [data-jump]'); if (review) review.onclick = () => choose('all');
   const history = q('#historyFromToday'); if (history) history.onclick = () => choose('history');
 
   // A new search refreshes whichever list is open.
-  document.addEventListener('aceso:live-search-complete', () => { if (open && open !== 'today') { fill(open); paint(); } });
+  document.addEventListener('aceso:live-search-complete', () => { if (open && open !== 'today') keepScroll(() => { fill(open); paint(); }); });
 
   paint();
 })();

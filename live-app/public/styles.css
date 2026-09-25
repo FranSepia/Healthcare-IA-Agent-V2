@@ -1251,3 +1251,6 @@ body,button,input,textarea{font-family:var(--sans)}
 .hub-panel{margin-top:14px;margin-bottom:48px}
 .hub-panel>.page-shell{padding-left:0;padding-right:0}
 body.simple-mode .hub-panel{display:none!important}
+/* Show/Hide: a small, quiet text control */
+#opportunityHubTabs .hub-toggle{height:auto;padding:4px 8px;border:0;border-radius:6px;background:none;color:#5b7189;font-weight:500;line-height:1.2;box-shadow:none}
+#opportunityHubTabs .hub-toggle:hover{background:#eef3f8;color:#0b5f9c}
