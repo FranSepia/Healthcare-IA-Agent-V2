@@ -14,13 +14,14 @@
   const SECTIONS = [
     { id: 'deadlines', eyebrow: 'DEADLINES', title: 'What is closing, and how ready we are',
       cards: [['i', 'deadlineReadiness', 1], ['i', 'submissionDeadlines', 1], ['c', 'upcomingDeadlines', 1]] },
+    { id: 'momentum', eyebrow: 'MOMENTUM', title: 'Pipeline value and opportunity trend',
+      cards: [['i', 'pipelineTrend', 2], ['i', 'topFunders', 1]] },
     { id: 'fit', eyebrow: 'SCREENING & FIT', title: 'What the search found, and how well it fits',
-      cards: [['i', 'conversionFunnel', 1], ['c', 'fitTiers', 1], ['i', 'topFunders', 1],
-        ['c', 'searchToDecision', 2], ['c', 'fitDistribution', 1]] },
+      cards: [['i', 'conversionFunnel', 1], ['c', 'fitTiers', 1], ['c', 'fitDistribution', 1],
+        ['c', 'searchToDecision', 2], ['c', 'fitBySource', 1]] },
     { id: 'sources', eyebrow: 'THEMES, COUNTRIES & SOURCES', title: 'Where the opportunities come from',
       cards: [['c', 'opportunitiesByTheme', 1], ['c', 'topCountries', 1], ['c', 'resultsBySource', 1],
-        ['c', 'fitBySource', 1], ['i', 'publicationTrend', 1], ['c', 'commonThemes', 1],
-        ['c', 'sourcesToThemes', 3]] },
+        ['c', 'commonThemes', 3], ['c', 'sourcesToThemes', 3]] },
     { id: 'time', eyebrow: 'PRODUCTIVITY', title: 'Analyst time saved', hours: true },
     { id: 'pipeline', eyebrow: 'PIPELINE & VALUE', title: 'Pursuits and potential value',
       sub: 'The pipeline is illustrative example data until approvals are tracked in the app.',
@@ -78,6 +79,12 @@
     if (!btn || typeof window.setInsightTrendMode !== 'function') return;
     window.setInsightTrendMode(btn.dataset.trend);
     renderSection('sources');
+  });
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('#dashSections [data-pvt]');
+    if (!btn || typeof window.setPipelineTrendMode !== 'function') return;
+    window.setPipelineTrendMode(btn.dataset.pvt);
+    renderSection('momentum');
   });
   document.addEventListener('aceso:dashboard-ready', render);
   document.addEventListener('aceso:live-search-complete', () => { if (q('#dashSections')) render(); });

@@ -423,7 +423,7 @@
         monthly: hoursRows(seriesFor('month'))
       } : null,
       pursuitDecisionQuality: dq ? { chart: 'Card "Pursuit decision quality"', isExampleData: true, how: 'Conversion between stages of the example pipeline: the share of pursuits that reached a stage and then also reached the next one.', steps: dq.steps, strongestHandoff: dq.best } : null,
-      opportunityPublicationTrend: { chart: 'Bar chart "Opportunity publication trend" (toggle Opportunities / Avg. fit)', how: 'Relevant opportunities grouped by the month the funder published them, last 12 months; the Avg. fit view shows each month\'s average fit score.', datedOpportunities: tr.placed, months: tr.months.map(m => ({ month: ym(m.d), published: m.count, avgFit: m.count ? Math.round(m.scoreSum / m.count) : null })), busiestMonth: ym(tr.peak.d) },
+      pipelineValueTrend: (d => ({ chart: 'Bars + line "Pipeline value & opportunities trend" (toggle Opportunities / Value ($))', isExampleData: d.isExample, how: 'Relevant opportunities per month by publication date, last 12 months, with the sum of published budgets as the second series. Uses example figures while fewer than six months have notices. The takeaway compares the last six months with the six before.', months: d.months.map(m => ({ month: m.d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), opportunities: m.count, potentialValue: fmtMoney(m.value) })), opportunitiesChangePct: d.countChange, valueChangePct: d.valueChange }))(pipelineTrendData()),
       deadlineReadiness: { chart: 'Donut "Deadline readiness" (% on track)', how: 'Relevant opportunities with a parseable deadline in the next 90 days. At risk = due within 7 days; Needs attention = 8-21 days left, or the notice has an incomplete TOR/RFP or limited information; Ready = more than 3 weeks left and a complete notice. "On track" = ready ÷ all dated in the next 90 days.', onTrackPct: rd.pct, counts: rd.counts, noPublishedDeadline: rd.undated, items: rd.items },
       opportunityConversionFunnel: { chart: 'Funnel "Opportunity conversion funnel"', how: 'Screened = every notice found; Passed rules = not excluded by the knockout rules; then fit score ≥ 65 and ≥ 85.', stages: funnelData(opps, excluded) },
       topFunders: { chart: 'Ranked list "Top funders"', how: 'Relevant opportunities per funder (PNUD merged into UNDP); the value column is the published budget lower bound, "—" when undisclosed.', rows: fundersData(opps).map(f => ({ funder: f.name, opportunities: f.count, publishedValue: f.value ? fmtMoney(f.value) : 'not disclosed' })) },
@@ -432,10 +432,63 @@
   }
   window.dashboardInsightData = describeForCopilot;
 
+  // Pipeline value & opportunities trend: relevant opportunities per month
+  // (by publication date) as bars, published value as the line — or the
+  // other way round with the toggle. Real data when at least six of the last
+  // twelve months have notices; otherwise a clearly labelled example series.
+  let pvtMode = 'count';
+  const PVT_EXAMPLE_COUNTS = [13, 17, 14, 18, 22, 17, 24, 27, 30, 40, 31, 27];
+  const PVT_EXAMPLE_VALUES = [3.1, 4.4, 3.0, 4.9, 5.8, 5.2, 6.0, 7.6, 8.0, 9.9, 7.4, 8.3].map(v => v * 1e6);
+  function pipelineTrendData() {
+    const opps = (typeof window.activeOpportunities === 'function' ? window.activeOpportunities() : (typeof opportunities !== 'undefined' ? opportunities : [])) || [];
+    const now = new Date();
+    const months = Array.from({ length: 12 }, (_, i) => ({ d: new Date(now.getFullYear(), now.getMonth() - 11 + i, 1), count: 0, value: 0 }));
+    opps.forEach(o => {
+      const d = parseDate(o.meta && o.meta.pubDate); if (!d) return;
+      const m = months.find(x => x.d.getFullYear() === d.getFullYear() && x.d.getMonth() === d.getMonth()); if (!m) return;
+      m.count += 1; m.value += parseValue(o.value) || 0;
+    });
+    const isExample = months.filter(m => m.count > 0).length < 6;
+    if (isExample) months.forEach((m, i) => { m.count = PVT_EXAMPLE_COUNTS[i]; m.value = PVT_EXAMPLE_VALUES[i]; });
+    const sum = (list, k) => list.reduce((a, m) => a + m[k], 0);
+    const change = (k) => { const prev = sum(months.slice(0, 6), k), last = sum(months.slice(6), k); return prev ? Math.round((last - prev) / prev * 100) : null; };
+    return { months, isExample, countChange: change('count'), valueChange: change('value') };
+  }
+  function pipelineTrendCard() {
+    const { months, isExample, countChange, valueChange } = pipelineTrendData();
+    const aside = `<div class="insight-toggle"><button type="button" class="${pvtMode === 'count' ? 'active' : ''}" data-pvt="count">Opportunities</button><button type="button" class="${pvtMode === 'value' ? 'active' : ''}" data-pvt="value">Value ($)</button></div>`;
+    const bar = m => (pvtMode === 'count' ? m.count : m.value), line = m => (pvtMode === 'count' ? m.value : m.count);
+    const w = 820, h = 250, pad = { l: 8, r: 8, t: 30, b: 26 };
+    const bw = (w - pad.l - pad.r) / 12, maxB = Math.max(...months.map(bar), 1), maxL = Math.max(...months.map(line), 1);
+    const yB = v => h - pad.b - (v / maxB) * (h - pad.t - pad.b);
+    const yL = v => h - pad.b - (v / maxL) * (h - pad.t - pad.b) * 0.92;
+    const label = v => (pvtMode === 'count' ? String(v) : fmtMoney(v));
+    const bars = months.map((m, i) => {
+      const x = pad.l + i * bw + bw * 0.16, bwi = bw * 0.68, top = yB(bar(m));
+      return `<g tabindex="0"><title>${m.d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}: ${m.count} opportunit${m.count === 1 ? 'y' : 'ies'} · ${fmtMoney(m.value)} published value</title>
+        <rect x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${bwi.toFixed(1)}" height="${Math.max(0, h - pad.b - top).toFixed(1)}" rx="4" fill="url(#pvtGrad)"/>
+        <text x="${(x + bwi / 2).toFixed(1)}" y="${pad.t - 12}" class="viz-value-label" text-anchor="middle">${label(bar(m))}</text>
+        <text x="${(x + bwi / 2).toFixed(1)}" y="${h - 6}" class="viz-axis-label" text-anchor="middle">${m.d.toLocaleDateString('en-US', { month: 'short' })}</text></g>`;
+    }).join('');
+    const pts = months.map((m, i) => [pad.l + i * bw + bw / 2, yL(line(m))]);
+    const path = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    const up = (countChange ?? 0) >= 0;
+    const pct = v => (v == null ? '—' : `${Math.abs(v)}%`);
+    return {
+      title: 'Pipeline value & opportunities trend',
+      sub: `${pvtMode === 'count' ? 'Bars: relevant opportunities per month · line: potential value' : 'Bars: potential value per month · line: relevant opportunities'}. Last 12 months.`,
+      note: isExample ? 'Example data' : '',
+      aside,
+      body: `<svg viewBox="0 0 ${w} ${h}" class="insight-svg pvt-svg" role="img" aria-label="Pipeline value and opportunities by month"><defs><linearGradient id="pvtGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3fa4e0"/><stop offset="1" stop-color="#1c78c4"/></linearGradient></defs>${bars}<path d="${path}" fill="none" stroke="#f5bb27" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="viz-legend"><span><i style="background:#2a8fd6"></i>${pvtMode === 'count' ? 'Opportunities' : 'Potential value'}</span><span><i style="background:#f5bb27"></i>${pvtMode === 'count' ? 'Potential value' : 'Opportunities'}</span></div>`,
+      foot: `<b>${up ? '↗ Momentum is building.' : '↘ Momentum is slowing.'}</b> Opportunities are ${up ? 'up' : 'down'} ${pct(countChange)} and potential value ${(valueChange ?? 0) >= 0 ? 'up' : 'down'} ${pct(valueChange)} in the last six months versus the six before.${isExample ? ' Example figures until six months of search history exist.' : ''}`
+    };
+  }
+
   function insightCards() {
     const { opps, excluded } = liveData();
     return {
-      decisionQuality: decisionQualityCard(), publicationTrend: trendCard(opps), deadlineReadiness: readinessCard(opps),
+      decisionQuality: decisionQualityCard(), publicationTrend: trendCard(opps), pipelineTrend: pipelineTrendCard(), deadlineReadiness: readinessCard(opps),
       conversionFunnel: funnelCard(opps, excluded), topFunders: fundersCard(opps), submissionDeadlines: deadlinesCard(opps)
     };
   }
@@ -446,5 +499,6 @@
   window.acesoParseDate = parseDate;
   window.renderAnalystHours = renderHours;
   window.setInsightTrendMode = mode => { trendMode = mode; };
+  window.setPipelineTrendMode = mode => { pvtMode = mode; };
   if (window.AcesoAnalystTime) window.AcesoAnalystTime.onChange(() => renderHours(false));
 })();

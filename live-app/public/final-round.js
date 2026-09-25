@@ -290,7 +290,7 @@
 
   function tuneToday(){
     const headline=q('#todayView .hero-copy h1');
-    if(headline) headline.innerHTML='<strong class="today-nine">9</strong> opportunities ready<br>for review today';
+    if(headline) headline.innerHTML='<strong class="today-nine">9</strong> <span class="hero-accent">opportunities</span> ready<br>for review today';
     const tools=q('#todayView .section-title.compact .table-tools');
     if(tools&&!q('.search-wrap',tools)){
       const input=q('input',tools),wrap=document.createElement('label');wrap.className='search-wrap';input.parentNode.insertBefore(wrap,input);wrap.append(input);

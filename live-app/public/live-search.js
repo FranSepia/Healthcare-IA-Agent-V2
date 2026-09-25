@@ -105,7 +105,7 @@
       <article class="excluded-case ${i === 0 ? 'open' : ''}">
         <button class="excluded-case-head no-flag" aria-expanded="${i === 0}">
           <span class="excluded-case-title"><small>${sourceBadge(d[4])}${escapeHtml(d[1])} · ${escapeHtml(d[2])}</small><b>${escapeHtml(d[0])}</b></span>
-          <span class="excluded-case-reason">${escapeHtml(d[3])}</span><span class="case-chevron">›</span>
+          <span class="excluded-case-reason" title="${escapeHtml(d[3])}">${escapeHtml(d[3])}</span><span class="case-chevron">›</span>
         </button>
         <div class="excluded-explanation"><small>WHY THIS IS NOT A MATCH</small><p>${escapeHtml(d[3])}</p><div><button class="keep-excluded">Keep excluded</button><button class="recover-case">Recover for human review</button></div></div>
       </article>`).join('');

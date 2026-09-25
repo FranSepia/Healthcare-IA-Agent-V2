@@ -43,7 +43,6 @@
   .nb-source strong em,
   svg .viz-donut-total,
   svg .dr-pct,
-  .simple-fig,
   #_ts#_ts#_ts){font-size:var(--fs-m)!important}
 
 /* L — page titles and the home headline figure */
@@ -68,7 +67,7 @@
   .pw-readiness b,.pw-compliance-score b,#pipelineMetrics b,.stage-score,
   .executive-kpis b,.financial-preview b,.world-stats b,.hours-kpis b,
   .insight-foot b,.dq-headline>b,.experience-intro>span>b,.talent-project-count>b,
-  .nb-source strong em,.simple-fig,svg .dr-pct,svg .viz-donut-total,
+  .nb-source strong em,svg .dr-pct,svg .viz-donut-total,
   #_ts#_ts#_ts){font-family:var(--sans)!important;font-weight:600!important;letter-spacing:-.01em!important}
 svg text{font-family:var(--sans)!important}
 
@@ -88,3 +87,15 @@ svg text{font-family:var(--sans)!important}
 
 /* Pre-existing: the Opportunities header was 40px wider than a phone screen. */
 #opportunitiesView .opportunities-master-head{box-sizing:border-box;max-width:100%}
+
+/* ---- Deliberate exceptions to the scale (requested) ----
+   The #_ts id is repeated four times so these win over the scale above. */
+/* Home headline: the one oversized title, with "opportunities" highlighted. */
+:is(.hero-copy h1,.hero-copy h1 *,#_ts#_ts#_ts#_ts){font-size:44px!important;line-height:1.08!important}
+:is(.hero-copy h1 .hero-accent,#_ts#_ts#_ts#_ts){color:var(--blue)!important;font-weight:600!important}
+/* "TODAY | GLOBAL OPPORTUNITIES BRIEFING": quieter than the headline. */
+:is(.hero-copy>.eyebrow,.hero-copy>.eyebrow *,#_ts#_ts#_ts#_ts){font-size:11px!important;letter-spacing:.08em!important}
+/* Knowledge Base search: a visible magnifier. */
+:is(#knowledgeContent .experience-search .search-glyph,#_ts#_ts#_ts#_ts){font-size:26px!important;line-height:1!important}
+/* Pipeline stage cards: stage names at title size. */
+:is(#pipelineMetrics button>span,#_ts#_ts#_ts#_ts){font-size:var(--fs-m)!important;font-weight:600!important;color:#0a315c!important;letter-spacing:-.01em!important}
