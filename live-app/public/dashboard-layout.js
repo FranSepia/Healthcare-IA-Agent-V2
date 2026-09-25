@@ -8,17 +8,20 @@
   const q = (s, r = document) => r.querySelector(s);
 
   // [source, id, span] — source 'c' = dashboard-charts.js, 'i' = dashboard-insights.js
+  // Ordered by importance for a BD lead: what closes soon and how ready we
+  // are, then what the search found and how good it is, then where it comes
+  // from, then productivity, and illustrative pipeline data last.
   const SECTIONS = [
-    { id: 'time', eyebrow: 'PRODUCTIVITY', title: 'Analyst time saved', hours: true },
     { id: 'deadlines', eyebrow: 'DEADLINES', title: 'What is closing, and how ready we are',
       cards: [['i', 'deadlineReadiness', 1], ['i', 'submissionDeadlines', 1], ['c', 'upcomingDeadlines', 1]] },
-    { id: 'fit', eyebrow: 'SCREENING & FIT', title: 'How the agent filtered this search',
-      cards: [['i', 'conversionFunnel', 1], ['c', 'fitTiers', 1], ['c', 'fitDistribution', 1],
-        ['c', 'searchToDecision', 2], ['c', 'fitBySource', 1]] },
-    { id: 'sources', eyebrow: 'SOURCES, FUNDERS & THEMES', title: 'Where the opportunities come from',
-      cards: [['c', 'resultsBySource', 1], ['i', 'topFunders', 1], ['c', 'topCountries', 1],
-        ['c', 'opportunitiesByTheme', 1], ['c', 'commonThemes', 1], ['i', 'publicationTrend', 1],
+    { id: 'fit', eyebrow: 'SCREENING & FIT', title: 'What the search found, and how well it fits',
+      cards: [['i', 'conversionFunnel', 1], ['c', 'fitTiers', 1], ['i', 'topFunders', 1],
+        ['c', 'searchToDecision', 2], ['c', 'fitDistribution', 1]] },
+    { id: 'sources', eyebrow: 'THEMES, COUNTRIES & SOURCES', title: 'Where the opportunities come from',
+      cards: [['c', 'opportunitiesByTheme', 1], ['c', 'topCountries', 1], ['c', 'resultsBySource', 1],
+        ['c', 'fitBySource', 1], ['i', 'publicationTrend', 1], ['c', 'commonThemes', 1],
         ['c', 'sourcesToThemes', 3]] },
+    { id: 'time', eyebrow: 'PRODUCTIVITY', title: 'Analyst time saved', hours: true },
     { id: 'pipeline', eyebrow: 'PIPELINE & VALUE', title: 'Pursuits and potential value',
       sub: 'The pipeline is illustrative example data until approvals are tracked in the app.',
       cards: [['c', 'pipelineOverview', 1], ['i', 'decisionQuality', 1], ['c', 'valueByTheme', 1],
@@ -53,6 +56,10 @@
     if (!root) return;
     const { charts, insights } = sources();
     root.innerHTML = SECTIONS.map(sec => sectionHTML(sec, charts, insights)).join('');
+    // The restricted Financial indicators card has no numbers to show, so it
+    // sits after the charts instead of above the map.
+    // It is inserted by another script right after this render, hence the timeout.
+    setTimeout(() => { const fin = document.querySelector('#dashboardView .financial-access-card'); if (fin) root.after(fin); });
     if (typeof window.renderAnalystHours === 'function') window.renderAnalystHours(true);
   }
 

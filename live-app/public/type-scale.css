@@ -6,7 +6,7 @@
             chips, chart labels (SVG charts are drawn ~1:1, so this is the
             on-screen size too)
    M  20px  section and card titles (h2, h3) and key figures (KPIs, %)
-   L  34px  page titles (h1) and the headline figure on the home screen
+   L  28px  page titles (h1) and the headline figure on the home screen
 
    To add text at a new size, pick one of these three tokens instead.
 
@@ -15,7 +15,7 @@
    per-screen rules that also use !important. Later rules (M, then L) win
    over earlier ones at equal specificity.
    ====================================================================== */
-:root{--fs-s:13px;--fs-m:20px;--fs-l:34px}
+:root{--fs-s:13px;--fs-m:20px;--fs-l:28px}
 
 /* S — the floor. Nothing in the app renders smaller than this. */
 :is(body,body *,#_ts#_ts#_ts){font-size:var(--fs-s)!important}
