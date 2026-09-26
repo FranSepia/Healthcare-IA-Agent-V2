@@ -1545,3 +1545,14 @@ body.deliverable-drawer-open::before{content:"";position:fixed;inset:0;z-index:1
 #criteriaView .worked-example .we-output i{width:8px;height:8px;border-radius:50%;background:#26a978;flex:none}
 #criteriaView .notebook-footer nav{flex-wrap:wrap;row-gap:8px}
 #criteriaView .geography-language-editor>.language-rules{margin-top:26px;padding-top:22px;border-top:1px solid #e3ebf2}
+/* Right-hand panels: the action buttons sit at the end of the content instead
+   of sticking over it while scrolling, and the floating Copilot button steps
+   aside while a panel is open so it never covers them. */
+#quickDrawer .drawer-actions{position:static!important;margin-top:20px;padding-bottom:8px}
+body:has(#quickDrawer.show) .global-copilot-dock{display:none!important}
+/* Pipeline example opportunities */
+.pl-example-chip{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:#fff4dc;color:#98620a;font-style:normal;font-weight:600;vertical-align:1px}
+#pipelineStoreNote{display:grid;gap:6px}
+#pipelineStoreNote>p{margin:0}
+#pipelineStoreNote .pl-examples-line{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#pipelineStoreNote .pl-examples-line button{border:1px solid #cfdde9;background:#fff;color:#0b5f9c;border-radius:8px;padding:6px 12px;font-weight:600;cursor:pointer}

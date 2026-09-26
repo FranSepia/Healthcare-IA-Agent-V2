@@ -17,6 +17,48 @@
   let storeMode = null, storeError = null, loaded = false;
   let activeStage = 'Qualified', activeKey = null;
 
+  // ---- Example opportunities (preview) --------------------------------------
+  // The previous example projects, so the team can see the workflow with
+  // realistic content. Dates are relative to today. They live in this browser
+  // only — never saved to Firestore — and reset on reload; "Hide examples"
+  // turns them off (remembered per browser).
+  const EXAMPLES_PREF = 'aceso_pipeline_examples';
+  let showExamples = true;
+  try { showExamples = localStorage.getItem(EXAMPLES_PREF) !== 'off'; } catch (e) { /* private mode */ }
+  const examples = new Map();
+  function buildExamples() {
+    if (examples.size) return;
+    const day = n => iso(addDays(today(), n));
+    const label = n => addDays(today(), n).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const at = (n, h = 9, m = 30) => { const d = addDays(today(), n); d.setHours(h, m); return d.toISOString(); };
+    const step = (name, n, done, owner) => ({ id: `s${Math.abs(n)}${name.length}`, name, owner, due: day(n), done, doneAt: done ? at(n) : '' });
+    const add = (key, stage, opp, extra = {}) => examples.set(key, { key, stage, example: true, owner: '', deliverables: [], comments: [], history: [], updatedAt: at(0), ...extra, opp: { type: 'RFP', source: 'Example', sourceUrl: '', ...opp } });
+    add('ex-hf-kenya', 'Qualified', { title: 'Health Financing Reform & Domestic Resource Mobilization', org: 'World Bank', country: 'Kenya', pillar: 'Health systems financing', score: 93, value: '$2.6M', due: label(21), summary: 'Technical assistance to strengthen health financing reform and domestic resource mobilization, with eligibility, evidence and team availability to confirm.' });
+    add('ex-phc-rwanda', 'Qualified', { title: 'Primary Healthcare Service Delivery Strengthening', org: 'WHO', country: 'Rwanda', pillar: 'Primary healthcare', score: 88, value: '$1.8M', due: label(17), summary: 'Advisory support to build resilient primary health care systems and improve service delivery.' });
+    add('ex-uhc-nigeria', 'Qualified', { title: 'UHC Implementation Support', org: 'Gates Foundation', country: 'Nigeria', pillar: 'Universal health coverage', score: 81, value: '$1.2M', due: label(25), summary: 'Technical assistance and capacity building for universal health coverage implementation.' });
+    add('ex-pp-rwanda', 'Internal review', { title: 'Provider Payment Systems in Sub-Saharan Africa', org: 'Gates Foundation', country: 'Rwanda', pillar: 'Provider payments', score: 90, value: '$1.4M', due: label(18), summary: 'Evidence review and design support for strategic purchasing and provider payment reform.' },
+      { owner: 'Jonty Roland', history: [{ at: at(-2), text: 'Moved to internal review', detail: '' }] });
+    add('ex-hospital-indonesia', 'Internal review', { title: 'Hospital Payment Reform Advisory', org: 'World Bank', country: 'Indonesia', pillar: 'Hospital systems management', score: 88, value: '$950K', due: label(20), summary: 'Advisory services on hospital payment mechanisms and case-based payment rollout.' },
+      { owner: 'Lizeth Hernandez-Rubio', history: [{ at: at(-1), text: 'Moved to internal review', detail: '' }] });
+    add('ex-maternal-tanzania', 'Proposal', { title: 'Maternal Health Systems Strengthening', org: 'UNFPA', country: 'Tanzania', pillar: 'Maternal health', score: 91, value: '$1.1M', due: label(33), summary: 'Proposal production for a maternal health systems strengthening programme.' }, {
+      owner: 'Lizeth Hernandez-Rubio',
+      deliverables: [step('Initial opportunity assessment', -23, true, 'Kirby McDonald'), step('Assemble core team', -21, true, 'Kirby McDonald · Jonty Roland'), step('Review funder guidelines', -18, true, "Gráinne O'Casey"), step('Develop concept note', -2, false, 'Lizeth Hernandez-Rubio · Kirby McDonald'), step('Internal review and approval', 6, false, 'Jonty Roland'), step('Prepare full proposal', 20, false, 'Lizeth Hernandez-Rubio')],
+      history: [{ at: at(-18), text: 'Funder guidelines reviewed', detail: 'UNFPA-guidelines.pdf' }, { at: at(-21), text: 'Core team confirmed', detail: 'Team-availability.xlsx' }, { at: at(-23), text: 'Opportunity assessment completed', detail: 'Assessment-v1.docx' }],
+      comments: [{ id: 'c1', author: 'Lizeth Hernandez-Rubio', text: 'Core team availability has been confirmed for the current timeline.', at: at(-1, 16, 40) }, { id: 'c2', author: 'Jonty Roland', text: 'Technical review is ready. Please confirm the country examples before approval.', at: at(0, 10, 24) }] });
+    add('ex-digital-uhc', 'Proposal', { title: 'Digital Health for UHC', org: 'European Union', country: 'Multiple countries', pillar: 'Digital health', score: 86, value: '$2.4M', due: label(50), summary: 'Drafting the technical approach for digital health investments that support UHC.' }, {
+      owner: "Gráinne O'Casey",
+      deliverables: [step('Requirements mapped', -20, true, "Gráinne O'Casey"), step('Win themes agreed', -17, true, "Gráinne O'Casey · Lizeth Hernandez-Rubio"), step('Draft technical approach', 9, false, 'Jonty Roland'), step('Past performance selected', 13, false, 'Lizeth Hernandez-Rubio'), step('Pricing review', 23, false, 'Maureen Lewis')],
+      history: [{ at: at(-17), text: 'Win themes approved', detail: 'Win-themes-v2.docx' }, { at: at(-20), text: 'Requirements mapped', detail: 'Compliance-matrix.xlsx' }] });
+    add('ex-workforce-ghana', 'Proposal', { title: 'Health Workforce Capacity Building', org: 'World Bank', country: 'Ghana', pillar: 'Health workforce', score: 84, value: '$900K', due: label(69), summary: 'Team and workplan development for a health workforce capacity-building proposal.' }, {
+      owner: 'Brendan Lawler',
+      deliverables: [step('Kickoff complete', -18, true, 'Brendan Lawler'), step('Partner validation', 7, false, 'Kirby McDonald'), step('Draft outline', 14, false, 'Brendan Lawler · Lizeth Hernandez-Rubio'), step('Team CVs', 21, false, 'Brendan Lawler')],
+      history: [{ at: at(-18), text: 'Proposal kickoff held', detail: 'Kickoff-notes.pdf' }] });
+    add('ex-governance-kenya', 'Submitted', { title: 'Health Systems Governance Advisory', org: 'World Bank', country: 'Kenya', pillar: 'Governance', score: 92, value: '$1.65M', due: label(-7), summary: 'Governance advisory proposal, submitted and awaiting the funder response.' }, { owner: 'Lizeth Hernandez-Rubio', submittedAt: at(-7), history: [{ at: at(-7), text: 'Moved to submitted', detail: '' }] });
+    add('ex-regional-hf', 'Submitted', { title: 'Regional Health Financing Support', org: 'African Development Bank', country: 'Rwanda', pillar: 'Health financing', score: 87, value: '$940K', due: label(-3), summary: 'Regional health financing support, submitted during the clarification window.' }, { owner: 'Kirby McDonald', submittedAt: at(-3), history: [{ at: at(-3), text: 'Moved to submitted', detail: '' }] });
+  }
+  const exampleList = () => { if (!showExamples) return []; buildExamples(); return [...examples.values()]; };
+  const getRec = key => records.get(key) || (showExamples ? examples.get(key) : null) || null;
+
   // ---- Real opportunities ---------------------------------------------------
   // Stable id for a notice across searches: its source URL, else source + title.
   function oppKey(o) {
@@ -30,13 +72,14 @@
   const snapshot = o => ({ title: o.title, org: o.org, country: o.country, pillar: o.pillar, type: o.type, source: o.source, sourceUrl: o.sourceUrl, value: o.value, due: o.due, score: o.score, summary: (o.meta && o.meta.objective) || '' });
 
   function stageItems(stage) {
+    const ex = exampleList().filter(r => r.stage === stage);
     if (stage === 'Qualified') {
-      return liveOpps().filter(o => o.status === 'Recommended' && !records.has(oppKey(o)))
-        .map(o => ({ key: oppKey(o), stage: 'Qualified', opp: snapshot(o), owner: '', deliverables: [], comments: [], history: [] }));
+      return [...liveOpps().filter(o => o.status === 'Recommended' && !records.has(oppKey(o)))
+        .map(o => ({ key: oppKey(o), stage: 'Qualified', opp: snapshot(o), owner: '', deliverables: [], comments: [], history: [] })), ...ex];
     }
-    return [...records.values()].filter(r => r.stage === stage).sort((x, y) => String(y.updatedAt || '').localeCompare(String(x.updatedAt || '')));
+    return [...[...records.values()].filter(r => r.stage === stage).sort((x, y) => String(y.updatedAt || '').localeCompare(String(x.updatedAt || ''))), ...ex];
   }
-  const itemByKey = key => records.get(key) || stageItems('Qualified').find(i => i.key === key) || null;
+  const itemByKey = key => getRec(key) || stageItems('Qualified').find(i => i.key === key) || null;
 
   // ---- Dates, values, derived fields ---------------------------------------
   const parseDay = t => { if (!t) return null; const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(t) ? `${t}T12:00:00` : t); return Number.isNaN(d.getTime()) ? null : d; };
@@ -124,6 +167,12 @@
     rerender();
   }
   async function save(key, patch, message) {
+    if (examples.has(key) && !records.has(key)) {
+      examples.set(key, { ...examples.get(key), ...patch, updatedAt: new Date().toISOString() });
+      if (message) say(`${message} (example — not saved)`);
+      rerender();
+      return true;
+    }
     try {
       const data = await api('PUT', `/api/pipeline/${key}`, patch);
       records.set(key, { ...(records.get(key) || {}), ...data.item });
@@ -146,7 +195,7 @@
   }
 
   async function moveTo(item, stage) {
-    const rec = records.get(item.key);
+    const rec = getRec(item.key);
     const patch = { stage, opp: item.opp, history: withEvent(rec, `Moved to ${STAGE_LABEL[stage].toLowerCase()}`) };
     if (stage === 'Proposal' && !((rec && rec.deliverables) || []).length) {
       patch.deliverables = suggestedPlan({ ...item, owner: (rec && rec.owner) || item.owner || '' });
@@ -158,6 +207,7 @@
   }
   async function removeItem(item) {
     if (!confirm(`Remove “${item.opp.title}” from the pipeline?`)) return;
+    if (item.example) { examples.delete(item.key); say('Example removed.'); closeDrawer(); rerender(); return; }
     try { await api('DELETE', `/api/pipeline/${item.key}`); records.delete(item.key); say('Removed from the pipeline.'); }
     catch (err) { say(`Could not remove: ${err.message}`); }
     closeDrawer(); rerender();
@@ -180,7 +230,7 @@
   }
   function stageRow(i) {
     const o = i.opp, p = progress(i), na = nextAction(i), fit = fitOf(o.score || 0);
-    return `<button class="pipeline-data-row ${i.stage === 'Proposal' && i.key === activeKey ? 'selected-proposal' : ''}" data-key="${esc(i.key)}"><span class="pipeline-check"><input type="checkbox" aria-label="Select ${esc(o.title)}"></span><span class="pipeline-opportunity"><strong class="stage-score">${o.score == null ? '—' : o.score}</strong><span><b>${esc(o.title)}</b><small>${esc(SUBLINE[i.stage](i))}</small></span></span><span><b>${esc(o.org || '—')} · ${esc(o.country || '—')}</b><small>${esc(o.source || '')}</small></span><span><b>${esc(o.pillar || '—')}</b></span><span class="pipeline-owner ${i.owner ? '' : 'unassigned'}"><i>${i.owner ? esc(initials(i.owner)) : '+'}</i><b>${esc(i.owner || 'Unassigned')}<small>${esc(i.owner ? roleOf(i.owner) : 'Assign in the panel')}</small></b></span><span class="pipeline-progress">${p == null ? '<b>—</b>' : `<b>${p}%</b><i><u style="width:${p}%"></u></i>`}</span><span class="pipeline-next"><b>${esc(na.label)}</b><small>${esc(na.text)}</small></span><span class="fit-pill ${fit.toLowerCase()}">${fit}</span><em>›</em></button>`;
+    return `<button class="pipeline-data-row ${i.stage === 'Proposal' && i.key === activeKey ? 'selected-proposal' : ''}" data-key="${esc(i.key)}"><span class="pipeline-check"><input type="checkbox" aria-label="Select ${esc(o.title)}"></span><span class="pipeline-opportunity"><strong class="stage-score">${o.score == null ? '—' : o.score}</strong><span><b>${esc(o.title)}${i.example ? ' <em class="pl-example-chip">Example</em>' : ''}</b><small>${esc(SUBLINE[i.stage](i))}</small></span></span><span><b>${esc(o.org || '—')} · ${esc(o.country || '—')}</b><small>${esc(o.source || '')}</small></span><span><b>${esc(o.pillar || '—')}</b></span><span class="pipeline-owner ${i.owner ? '' : 'unassigned'}"><i>${i.owner ? esc(initials(i.owner)) : '+'}</i><b>${esc(i.owner || 'Unassigned')}<small>${esc(i.owner ? roleOf(i.owner) : 'Assign in the panel')}</small></b></span><span class="pipeline-progress">${p == null ? '<b>—</b>' : `<b>${p}%</b><i><u style="width:${p}%"></u></i>`}</span><span class="pipeline-next"><b>${esc(na.label)}</b><small>${esc(na.text)}</small></span><span class="fit-pill ${fit.toLowerCase()}">${fit}</span><em>›</em></button>`;
   }
   const EMPTY = {
     Qualified: 'No recommended opportunities waiting. New ones appear here after a search; opportunities that need a decision stay on the Opportunities screen.',
@@ -201,8 +251,12 @@
     }
     let note = $('#pipelineStoreNote');
     if (!note) { note = document.createElement('div'); note.id = 'pipelineStoreNote'; note.className = 'status-mapping'; metrics?.after(note); }
-    note.hidden = !(storeError || storeMode === 'memory');
-    note.innerHTML = storeError ? `<b>Pipeline storage is unavailable —</b> ${esc(storeError)}. Qualified still shows the latest search.` : storeMode === 'memory' ? '<b>Not saved to the database —</b> Firestore is not configured on this server, so pipeline changes last only until it restarts.' : '';
+    const storeLine = storeError ? `<b>Pipeline storage is unavailable —</b> ${esc(storeError)}. Qualified still shows the latest search.` : storeMode === 'memory' ? '<b>Not saved to the database —</b> Firestore is not configured on this server, so pipeline changes last only until it restarts.' : '';
+    const exampleLine = showExamples ? '<span><b>Example opportunities are shown</b> to preview the workflow. They are marked “Example”, live only in this browser and are never saved.</span><button type="button" data-examples="off">Hide examples</button>' : '<span>Only real opportunities are shown.</span><button type="button" data-examples="on">Show example opportunities</button>';
+    note.hidden = false;
+    note.innerHTML = `${storeLine ? `<p>${storeLine}</p>` : ''}<div class="pl-examples-line">${exampleLine}</div>`;
+    const exBtn = $('[data-examples]', note);
+    if (exBtn) exBtn.onclick = () => { showExamples = exBtn.dataset.examples === 'on'; try { localStorage.setItem(EXAMPLES_PREF, showExamples ? 'on' : 'off'); } catch (e) { /* private mode */ } rerender(); };
     const title = $('#selectedStageTitle'); if (title) title.textContent = activeStage === 'Proposal' ? 'Proposals in production' : `${activeStage} opportunities`;
     const copy = $('#selectedStageCopy'); if (copy) copy.textContent = activeStage === 'Proposal' ? 'Track owners, deadlines and proposal completion. Select a proposal to open its workspace below.' : activeStage === 'Qualified' ? 'Recommended by the agent in the latest search and ready for a pursuit decision.' : activeStage === 'Internal review' ? 'Opportunities the team is deciding whether to pursue.' : 'Proposals sent to the funder.';
     const table = $('#pipelineTable');
@@ -231,7 +285,7 @@
     const actions = item.stage === 'Qualified' ? '<button class="primary" data-move="Internal review">Move to internal review →</button>'
       : item.stage === 'Internal review' ? '<button class="primary" data-move="Proposal">Approve for proposal →</button>'
       : '<button class="secondary" data-move="Proposal">Back to proposal</button>';
-    return `<div class="reference-drawer pipeline-drawer"><p class="eyebrow">${esc(STAGE_LABEL[item.stage])} · ${esc(o.org || '')}</p>
+    return `<div class="reference-drawer pipeline-drawer"><p class="eyebrow">${esc(STAGE_LABEL[item.stage])} · ${esc(o.org || '')}${item.example ? ' · EXAMPLE' : ''}</p>
       <div class="drawer-heading"><div><h2>${esc(o.title)}</h2><p>${esc(o.country || '')}${o.pillar ? ` · ${esc(o.pillar)}` : ''}</p></div><span class="drawer-fit"><b>${o.score == null ? '—' : `${o.score}%`}</b><small>FIT</small></span></div>
       <div class="recommendation-line"><b>● &nbsp; ${esc(na.label)}</b><span>${esc(na.text)}</span></div>
       <section><h3>Project summary</h3><p>${esc(o.summary || 'No summary available for this opportunity yet.')}</p></section>
@@ -283,14 +337,14 @@
     const proposals = activeStage === 'Proposal' ? rows('Proposal') : [];
     if (!proposals.length) { box.hidden = true; box.innerHTML = ''; return; }
     if (!proposals.some(p => p.key === activeKey)) activeKey = proposals[0].key;
-    const item = records.get(activeKey), o = item.opp, list = item.deliverables || [];
+    const item = getRec(activeKey), o = item.opp, list = item.deliverables || [];
     const done = doneCount(item), pc = progress(item), next = nextStep(item);
     const overdue = list.filter(d => !d.done && parseDay(d.due) && parseDay(d.due) < today());
     const approval = list.find(d => !d.done && /review|approv/i.test(d.name));
     const members = [...new Set([item.owner, ...list.map(d => d.owner)].flatMap(n => String(n || '').split(/\s*[·,]\s*/)).map(n => n.trim()).filter(Boolean))];
     const comments = [...(item.comments || [])].sort((a, b) => String(b.at).localeCompare(String(a.at)));
     box.hidden = false;
-    box.innerHTML = `<header class="proposal-workspace-head"><div><p class="eyebrow">SELECTED PROPOSAL</p><h2>${esc(o.title)}</h2><p>${esc(o.org || '')}${o.country ? ` · ${esc(o.country)}` : ''} · Proposal stage</p></div><div class="pw-head-actions"><span>● &nbsp; In progress</span><button type="button" class="pw-submit" data-submit>Mark as submitted</button></div></header>
+    box.innerHTML = `<header class="proposal-workspace-head"><div><p class="eyebrow">SELECTED PROPOSAL${item.example ? ' · EXAMPLE' : ''}</p><h2>${esc(o.title)}</h2><p>${esc(o.org || '')}${o.country ? ` · ${esc(o.country)}` : ''} · Proposal stage</p></div><div class="pw-head-actions"><span>● &nbsp; In progress</span><button type="button" class="pw-submit" data-submit>Mark as submitted</button></div></header>
       <section class="proposal-workspace-summary"><div><small>Proposal readiness</small><b>${pc}%</b><i><u style="width:${pc}%"></u></i><em>${done} of ${list.length} deliverables complete</em></div><div><small>Next action</small><b>${esc(next ? next.name : 'No action pending')}</b></div><div><small>Deadline</small><b>${esc(o.due || 'Not specified')}</b></div><div><small>Owner</small>${ownerSelect(item, 'data-ws-owner')}</div></section>
       <section class="proposal-attention"><header><p class="eyebrow">NEEDS ATTENTION NOW</p></header><div><article><small>Next action</small><b>${esc(next ? next.name : 'All deliverables complete')}</b><em>${esc(next && next.due ? `Due ${short(next.due)}` : next ? 'No due date' : 'Ready to submit')}</em></article><article><small>Overdue</small><b>${overdue.length ? `${overdue.length} overdue deliverable${overdue.length === 1 ? '' : 's'}` : 'Nothing overdue'}</b><em>${esc(overdue.length ? overdue.map(d => d.name).join(', ') : 'Every open deliverable is on schedule')}</em></article><article><small>Next approval</small><b>${esc(approval ? approval.name : 'No approval pending')}</b><em>${esc(approval && approval.due ? `Due ${short(approval.due)}` : '—')}</em></article></div></section>
       <div class="proposal-workspace-body"><main><section class="proposal-delivery-sequence"><header><div><p class="eyebrow">EDITABLE DELIVERY PLAN</p><h3>From plan to submission</h3><p>Deliverables, owners, evidence and dates in one continuous sequence.</p></div><button type="button" id="addPlanStep">＋ Add deliverable</button></header><div class="delivery-sequence">${list.map(stepMarkup).join('') || '<p class="pl-empty">No deliverables yet. Add the first one.</p>'}</div></section></main>
@@ -333,9 +387,10 @@
       const nameInput = $('.wc-name', e.currentTarget), text = $('.wc-text', e.currentTarget).value.trim();
       if (nameInput) { userName = nameInput.value.trim(); try { localStorage.setItem('aceso_user_name', userName); } catch (err) { /* private mode */ } }
       if (!text || !userName) return;
+      if (item.example) { item.comments = [...(item.comments || []), { id: String(Date.now()), author: userName, text, at: new Date().toISOString() }]; renderWorkspace(); say('Comment added (example — not saved).'); return; }
       try {
         const data = await api('POST', `/api/pipeline/${key}/comments`, { author: userName, text });
-        const rec = records.get(key); rec.comments = [...(rec.comments || []), data.comment]; renderWorkspace();
+        const rec = getRec(key); rec.comments = [...(rec.comments || []), data.comment]; renderWorkspace();
       } catch (err) { say(`Could not post the comment: ${err.message}`); }
     };
   }
@@ -408,9 +463,9 @@
     const lists = STAGES.map(s => stageItems(s));
     const all = lists.flat();
     return {
-      stages: STAGES, counts: lists.map(l => l.length), loaded, fmtValue,
+      stages: STAGES, counts: lists.map(l => l.length), loaded, fmtValue, hasExamples: all.some(i => i.example),
       totalValue: all.reduce((a, i) => a + parseMoney(i.opp.value), 0),
-      items: all.map(i => ({ stage: i.stage, title: i.opp.title, funder: i.opp.org, country: i.opp.country, owner: i.owner || 'Unassigned', progressPct: progress(i), nextAction: nextAction(i).label, date: nextAction(i).text, fit: fitOf(i.opp.score || 0), value: i.opp.value || 'Not disclosed' }))
+      items: all.map(i => ({ example: !!i.example, stage: i.stage, title: i.opp.title, funder: i.opp.org, country: i.opp.country, owner: i.owner || 'Unassigned', progressPct: progress(i), nextAction: nextAction(i).label, date: nextAction(i).text, fit: fitOf(i.opp.score || 0), value: i.opp.value || 'Not disclosed' }))
     };
   };
 
