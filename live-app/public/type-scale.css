@@ -109,3 +109,9 @@ svg text{font-family:var(--sans)!important}
 :is(.record-chapter .chapter-toggle,.record-chapter .chapter-toggle *,#_ts#_ts#_ts#_ts){font-size:13px!important}
 :is(.summary-meter,.summary-meter *,.elig-chip,.elig-chip *,#_ts#_ts#_ts#_ts){font-size:13px!important}
 :is(.record-hero-decision>button,#_ts#_ts#_ts#_ts){font-size:15px!important}
+/* Display titles only (Today headline, full-record title): Plus Jakarta Sans. */
+:is(#todayView .hero-copy h1,#todayView .hero-copy h1 *,.complete-record-hero .record-origin h1,#_ts#_ts#_ts#_ts){font-family:'Plus Jakarta Sans',var(--sans)!important;letter-spacing:-.01em!important}
+:is(#todayView .hero-copy h1,#_ts#_ts#_ts#_ts){font-weight:500!important}
+:is(#todayView .hero-copy h1 .hero-accent,#todayView .hero-copy h1 .today-nine,#_ts#_ts#_ts#_ts){font-weight:700!important}
+:is(.complete-record-hero .record-origin h1,#_ts#_ts#_ts#_ts){font-weight:700!important;font-size:32px!important;line-height:1.2!important}
+@media(max-width:760px){:is(.complete-record-hero .record-origin h1,#_ts#_ts#_ts#_ts){font-size:28px!important}}
