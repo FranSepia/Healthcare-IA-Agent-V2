@@ -323,7 +323,8 @@
     return `<div class="delivery-step ${d.done ? 'complete' : ''}"><input data-plan-step="${index}" type="checkbox" aria-label="Mark ${esc(d.name)} as complete" ${d.done ? 'checked' : ''}><span><b>${esc(d.name)}</b><em>${esc(d.owner || 'Unassigned')}</em></span><small class="step-due"><span>${d.done ? 'Completed' : 'Due'}</span><b>${esc(short(d.done ? (d.doneAt || d.due) : d.due) || '—')}</b></small><button type="button" data-remove-step="${index}" aria-label="Remove ${esc(d.name)}">×</button></div>`;
   }
   function formMarkup(item) {
-    const members = [...new Set([item.owner, ...(item.deliverables || []).map(d => d.owner)].filter(Boolean))];
+    // Owners can be "A · B" or "A, B": list each person once.
+    const members = [...new Set([item.owner, ...(item.deliverables || []).map(d => d.owner)].flatMap(n => String(n || '').split(/\s*[·,]\s*/)).map(n => n.trim()).filter(Boolean))];
     const people = [...new Set([...members, ...team().map(p => p.name)])];
     return `<form class="new-step-form deliverable-form" id="newStepForm"><header><div><p class="eyebrow">NEW DELIVERABLE</p><h3>Add work to the delivery plan</h3><p>Define ownership and due date. Evidence can be added now or when the work is completed.</p></div><button type="button" id="closeNewStep" aria-label="Close">×</button></header>
       <div class="dl-body"><div class="dl-fields"><label><span>Deliverable name</span><input id="newStepName" placeholder="e.g. Draft technical approach" required></label><label><span>Responsible person(s)</span><input id="newStepOwner" list="dlPeople" placeholder="Select or enter names" required></label><label><span>Due date</span><input id="newStepDate" type="date" required></label></div><datalist id="dlPeople">${people.map(n => `<option value="${esc(n)}">`).join('')}</datalist>

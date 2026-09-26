@@ -1531,7 +1531,7 @@ body.deliverable-drawer-open::before{content:"";position:fixed;inset:0;z-index:1
 .pipeline-drawer .drawer-actions{display:flex;gap:10px;flex-wrap:wrap}
 .pipeline-drawer .drawer-actions a.secondary{display:inline-flex;align-items:center;border:1px solid #cfdde9;border-radius:10px;padding:11px 16px;color:#34506b;text-decoration:none;font-weight:600}
 /* Deliverable drawer body (fields keep the round-2 layout) */
-#newStepForm .dl-body{padding:20px 26px 96px}
+#newStepForm .dl-body{padding:20px 26px 8px}
 #newStepForm .dl-fields{grid-template-columns:1fr}
 #newStepForm .dl-fields label:first-child{grid-column:auto}
 @media(max-width:700px){#pipelineView .proposal-workspace-head{display:block}#pipelineView .pw-head-actions{justify-content:flex-start;margin-top:10px}#pipelineView .proposal-attention{margin:14px 16px 0}#pipelineView .proposal-workspace-body{padding:14px 16px 18px}#pipelineView .project-history{margin:0 16px 16px!important}}
@@ -1556,3 +1556,7 @@ body:has(#quickDrawer.show) .global-copilot-dock{display:none!important}
 #pipelineStoreNote>p{margin:0}
 #pipelineStoreNote .pl-examples-line{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 #pipelineStoreNote .pl-examples-line button{border:1px solid #cfdde9;background:#fff;color:#0b5f9c;border-radius:8px;padding:6px 12px;font-weight:600;cursor:pointer}
+/* Deliverable drawer: the Cancel / Add buttons sit at the end of the form and
+   scroll with it. (A fixed footer inside the sliding, transformed panel was
+   anchored to the content, so it floated over the fields when scrolling.) */
+#pipelineView #newStepForm>footer{position:static!important;width:auto!important;margin:0!important;padding:16px 26px 26px!important;border-top:1px solid #e0e9f0;background:#fff!important;box-shadow:none!important;backdrop-filter:none!important}
