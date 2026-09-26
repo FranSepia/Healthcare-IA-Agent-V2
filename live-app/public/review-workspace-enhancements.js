@@ -77,12 +77,12 @@
 
   // Chapters 01 and 02 open folded: one line that sums up the whole chapter,
   // and "Show details" for the explanation, bars, flags and requirement table.
-  function foldChapter(chapter,summary){
+  function foldChapter(chapter,summary,visual=''){
     const h2=qs('h2',chapter); if(!h2)return;
     const body=document.createElement('div'); body.className='chapter-body';
     while(h2.nextSibling) body.appendChild(h2.nextSibling);
     chapter.classList.add('collapsible');
-    h2.insertAdjacentHTML('afterend',`<div class="chapter-summary"><p>${summary}</p><button type="button" class="chapter-toggle" aria-expanded="false"><span>Show details</span><i aria-hidden="true">⌄</i></button></div>`);
+    h2.insertAdjacentHTML('afterend',`<div class="chapter-summary"><p>${summary}</p><button type="button" class="chapter-toggle" aria-expanded="false"><span>Show details</span><i aria-hidden="true">⌄</i></button>${visual}</div>`);
     chapter.appendChild(body);
     const btn=qs('.chapter-toggle',chapter);
     btn.onclick=()=>{const open=chapter.classList.toggle('open');btn.setAttribute('aria-expanded',String(open));qs('span',btn).textContent=open?'Hide details':'Show details';};
@@ -95,7 +95,10 @@
       const checks=qsa('.assessment-alerts>span',assessment).length;
       const parts=[...flags.map(escapeHtml)];
       if(checks)parts.push(`${checks} point${checks===1?'':'s'} to confirm before pursuing`);
-      foldChapter(assessment,`<b>${tier} · ${o.score}%.</b> ${parts.join(' · ')}${parts.length?'.':''}`);
+      // The bar shows the agent's overall fit score (the value every factor
+      // above is read against), in the same style as the bars inside.
+      const meter=`<div class="summary-visual summary-meter"><span>Overall fit</span><i><b style="width:${Math.max(0,Math.min(100,Number(o.score)||0))}%"></b></i><strong>${o.score}%</strong></div>`;
+      foldChapter(assessment,`<b>${tier} · ${o.score}%.</b> ${parts.join(' · ')}${parts.length?'.':''}`,meter);
     }
     if(eligibility){
       const rows=qsa('.elig-table>div',eligibility).map(r=>({name:qs('b',r).textContent,status:(qs('em',r).className.match(/elig-(\w+)/)||[])[1]}));
@@ -103,9 +106,12 @@
       const confirm=rows.filter(r=>r.status==='pending').map(r=>r.name);
       const missing=rows.filter(r=>r.status==='unknown').length;
       const parts=[];
-      if(confirm.length)parts.push(`To confirm: ${escapeHtml(confirm.join(', '))}`);
+      if(confirm.length)parts.push(`${confirm.length} to confirm`);
       if(missing)parts.push(`${missing} not stated in the notice`);
-      foldChapter(eligibility,`<b>${verified} of ${rows.length} requirements verified.</b> ${parts.join(' · ')}${parts.length?'.':''}`);
+      // One chip per requirement, coloured by its status.
+      const icon={verified:'✓',pending:'◷',unknown:'—'},word={verified:'Verified',pending:'Confirm',unknown:'Not stated'};
+      const chips=`<div class="summary-visual elig-chips">${rows.map(r=>`<span class="elig-chip chip-${r.status}" title="${escapeHtml(r.name)} · ${word[r.status]||''}"><i aria-hidden="true">${icon[r.status]||''}</i>${escapeHtml(r.name)}</span>`).join('')}</div>`;
+      foldChapter(eligibility,`<b>${verified} of ${rows.length} requirements verified.</b> ${parts.join(' · ')}${parts.length?'.':''}`,chips);
     }
   }
 
@@ -119,7 +125,7 @@
     const fitTierShort=fitTier.startsWith('Strong')?'Strong Fit':fitTier.startsWith('Low')?'Low Fit':'Human Review';
     const factors=[['Thematic alignment',Math.min(98,o.score+4)],['Activity alignment',Math.min(96,o.score+1)],['Regional alignment',Math.max(55,o.score-8)],['Funder alignment',Math.min(94,o.score+2)],['Budget alignment',Math.max(60,o.score-10)],['Eligibility',Math.max(60,o.score-9)],['Language',m.language==='French'?55:Math.max(80,o.score-3)],['Operational feasibility',Math.max(58,o.score-14)],['Deadline feasibility',Math.max(62,o.score-11)],['Risk indicators',Math.max(50,100-o.score)]];
     root.innerHTML=`<section class="complete-record">
-      <header class="complete-record-hero"><div class="record-origin" data-country="${escapeHtml(o.country)}"><span>${escapeHtml(o.type)} · ${escapeHtml(o.org)} &nbsp;|&nbsp; ${escapeHtml(o.country)} · ${escapeHtml(context.region)}</span><div class="tags" style="margin:8px 0 0">${sourceTag(o)}${rfpStatusTag(o)}<span class="tag rfp-status ${fitTierCls}">${escapeHtml(fitTier)}</span></div><h1>${escapeHtml(o.title)}</h1><p>${escapeHtml(context.summary)}</p><a class="source-link" ${sourceHrefAttrs(o)}>↗ &nbsp; View original publication</a></div><div class="record-hero-decision" data-country="${escapeHtml(o.country)}"><span class="country-signal"><i></i>${escapeHtml(o.country)}<small>${escapeHtml(context.region)}</small></span><span class="hero-score" style="--fit:${o.score}%"><i aria-hidden="true"></i><span><b>${o.score}%</b><small>FIT</small></span></span><em>${escapeHtml(fitTierShort)}</em><dl><div><dt>Value</dt><dd>${escapeHtml(o.value)}</dd></div><div><dt>Deadline</dt><dd>${escapeHtml(o.due)}</dd></div><div><dt>Type</dt><dd>${escapeHtml(o.type)}</dd></div><div><dt>Pillar</dt><dd>${escapeHtml(o.pillar)}</dd></div></dl><button data-approve>Approve to pursue&nbsp;&nbsp;→</button></div></header>
+      <header class="complete-record-hero"><div class="record-origin" data-country="${escapeHtml(o.country)}"><span>${escapeHtml(o.type)} · ${escapeHtml(o.org)} &nbsp;|&nbsp; ${escapeHtml(o.country)} · ${escapeHtml(context.region)}</span><div class="tags" style="margin:8px 0 0">${sourceTag(o)}${rfpStatusTag(o)}<span class="tag rfp-status ${fitTierCls}">${escapeHtml(fitTier)}</span></div><h1>${escapeHtml(o.title)}</h1><p>${escapeHtml(context.summary)}</p><a class="source-link" ${sourceHrefAttrs(o)}>↗ &nbsp; View original publication</a></div><div class="record-hero-decision" data-country="${escapeHtml(o.country)}"><span class="country-signal"><i></i>${escapeHtml(o.country)}<small>${escapeHtml(context.region)}</small></span><span class="hero-score" style="--fit:${o.score}%"><i aria-hidden="true"></i><span><b>${o.score}%</b><small>FIT</small></span></span><em>${escapeHtml(fitTierShort)}</em><dl><div><dt>Value</dt><dd>${escapeHtml(o.value)}</dd></div><div><dt>Deadline</dt><dd>${escapeHtml(o.due)}</dd></div><div><dt>Type</dt><dd>${escapeHtml(o.type)}</dd></div><div><dt>Pillar</dt><dd>${escapeHtml(o.pillar)}</dd></div></dl><button data-approve>Approve to pursue&nbsp;&nbsp;→</button><button data-clarify class="hero-secondary">Request clarification</button></div></header>
       <div class="complete-record-grid"><main>
         <article class="record-chapter"><p class="eyebrow">01 · AGENT ASSESSMENT</p><h2>Why this opportunity deserves human review</h2><p>${escapeHtml(m.explanation||`It aligns with Aceso’s ${o.pillar} experience, meets the configured fit threshold and has a viable advisory scope. Country-specific eligibility and delivery capacity still require human validation.`)}</p><div class="assessment-bars">${factors.map(x=>`<div><span>${x[0]}</span><i><b style="width:${x[1]}%"></b></i><strong>${x[1]}%</strong></div>`).join('')}</div>${(m.reviewFlags&&m.reviewFlags.length)?`<div class="tags" style="margin:10px 0 0">${m.reviewFlags.map(f=>`<span class="tag status" style="background:var(--orangebg);color:var(--orange)">${escapeHtml(f)}</span>`).join('')}${m.mnchException?'<span class="tag rfp-status rfp-info">MNCH · contradictory criteria</span>':''}</div>`:''}<div class="assessment-alerts">${m.exclusions&&m.exclusions.length?m.exclusions.map(x=>`<span>△ ${escapeHtml(x)}</span>`).join(''):`<span>△ Confirm participation requirements in ${escapeHtml(o.country)}</span><span>△ Validate the published delivery window</span><span>△ Confirm proposed-team availability</span>`}</div></article>
         <article class="record-chapter"><p class="eyebrow">02 · ELIGIBILITY</p><h2>Requirement-by-requirement check</h2><p>${escapeHtml(m.objective||context.summary)}</p>${eligibilityTable(o)}${(m.keywords&&m.keywords.length)?`<div class="tags" style="margin-top:12px">${m.keywords.map(k=>`<span class="tag">${escapeHtml(k)}</span>`).join('')}</div>`:''}</article>
@@ -127,7 +133,6 @@
       </main><aside class="record-workbench">
         <article class="review-comments"><header><div><p class="eyebrow">HUMAN REVIEW</p><h2>Team comments</h2></div><span id="commentCount">0 comments</span></header><div id="commentList"></div><form id="commentForm"><textarea required placeholder="Add a comment for the team..."></textarea><button>Add comment</button></form></article>
         <article class="decision-route-full"><p class="eyebrow">DECISION ROUTE</p><h2>From opportunity to approval</h2>${['Opportunity mapping','Fit ranking','Aceso workspace','Analyst review','BD Manager','Finance & Director'].map((x,i)=>`<div class="${i<3?'done':i===3?'active':''}"><i>${i<3?'✓':''}</i><span><b>${x}</b><small>${i<3?'Completed':i===3?'Current step — finalise recommendation.':'Pending'}</small></span></div>`).join('')}</article>
-        <article class="next-human"><p class="eyebrow">NEXT HUMAN DECISION</p><h2>Confirm country and eligibility requirements</h2><p>Validate the participation route for ${escapeHtml(o.country)} and resolve any remaining eligibility questions before committing proposal capacity.</p><small>SUBMISSION DEADLINE <b>${escapeHtml(o.due)}</b></small><button data-approve>Approve to pursue</button><button data-clarify>Request clarification</button></article>
       </aside></div></section>`;
     foldRecordChapters(root,o,fitTier);
     setupRecordInteractions();

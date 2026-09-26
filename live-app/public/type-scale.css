@@ -103,7 +103,9 @@ svg text{font-family:var(--sans)!important}
 :is(.opp-row .opp-main h3,#_ts#_ts#_ts#_ts){font-size:15px!important;line-height:1.4!important;font-weight:600!important;letter-spacing:0!important}
 @media(max-width:760px){:is(.hero-copy h1,.hero-copy h1 *,#_ts#_ts#_ts#_ts){font-size:32px!important}}
 /* Full record: a readable summary, a bold title, one-line chapter summaries. */
-:is(.complete-record-hero .record-origin>p,#_ts#_ts#_ts#_ts){font-size:17px!important;line-height:1.6!important;color:#2d4a68!important;max-width:680px!important}
+:is(.complete-record-hero .record-origin>p,#_ts#_ts#_ts#_ts){font-size:19px!important;line-height:1.55!important;color:#2d4a68!important;max-width:700px!important}
 :is(.complete-record-hero .record-origin h1,#_ts#_ts#_ts#_ts){font-weight:600!important}
 :is(.record-chapter .chapter-summary p,.record-chapter .chapter-summary b,#_ts#_ts#_ts#_ts){font-size:15px!important;line-height:1.5!important}
 :is(.record-chapter .chapter-toggle,.record-chapter .chapter-toggle *,#_ts#_ts#_ts#_ts){font-size:13px!important}
+:is(.summary-meter,.summary-meter *,.elig-chip,.elig-chip *,#_ts#_ts#_ts#_ts){font-size:13px!important}
+:is(.record-hero-decision>button,#_ts#_ts#_ts#_ts){font-size:15px!important}
