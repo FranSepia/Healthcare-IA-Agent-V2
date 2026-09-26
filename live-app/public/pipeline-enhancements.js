@@ -1,311 +1,451 @@
 (() => {
-  // Illustrative example pipeline for demos — there is no backend yet that
-  // tracks which real search results have been approved to pursue, so this
-  // is a fixed, deliberately-crafted example dataset (generic project
-  // shapes against real funder types), not live data. window.pipelineStats()
-  // exposes the same numbers the Dashboard's pipeline funnel reads, so the
-  // two views can never disagree.
-  // Stages, rows and owners follow Yael's pipeline (Aceso team members as
-  // owners). Values are illustrative so example totals can be computed.
-  const stageData = {
-    Qualified: [
-      { score: 93, title: 'Health Financing Reform & Domestic Resource Mobilization', summary: 'Eligibility, evidence and team availability', funder: 'World Bank', country: 'Kenya', focus: 'Health systems financing', owner: 'Kirby McDonald', initials: 'KM', progress: 35, next: 'Complete human review', date: '16 Sep 2026', fit: 'High', value: 2600000 },
-      { score: 88, title: 'Primary Healthcare Service Delivery Strengthening', summary: 'Build resilient PHC systems', funder: 'WHO', country: 'Rwanda', focus: 'Primary healthcare', owner: 'Brendan Lawler', initials: 'BL', progress: 20, next: 'Review guidelines', date: '12 Sep 2026', fit: 'High', value: 1800000 },
-      { score: 81, title: 'UHC Implementation Support', summary: 'Technical assistance and capacity building', funder: 'Gates Foundation', country: 'Nigeria', focus: 'Universal health coverage', owner: 'Gráinne O\'Casey', initials: 'GO', progress: 10, next: 'Assess eligibility', date: '20 Sep 2026', fit: 'Medium', value: 1200000 }
-    ],
-    'Internal review': [
-      { score: 93, title: 'Health Financing Reform & Domestic Resource Mobilization', summary: 'Awaiting final pursuit decision', funder: 'World Bank', country: 'Kenya', focus: 'Health systems financing', owner: 'Lizeth Hernandez-Rubio', initials: 'LH', progress: 72, next: 'Confirm delivery team', date: '16 Sep 2026', fit: 'High', value: 2600000 },
-      { score: 90, title: 'Provider Payment Systems in Sub-Saharan Africa', summary: 'Evidence review in progress', funder: 'Gates Foundation', country: 'Rwanda', focus: 'Provider payments', owner: 'Jonty Roland', initials: 'JR', progress: 58, next: 'Approve to pursue', date: '13 Sep 2026', fit: 'High', value: 1400000 }
-    ],
-    Proposal: [
-      { score: 91, title: 'Maternal Health Systems Strengthening', summary: 'Proposal production in progress', funder: 'UNFPA', country: 'Tanzania', focus: 'Maternal health', owner: 'Lizeth Hernandez-Rubio', initials: 'LH', progress: 75, next: 'Technical review', date: '28 Sep 2026', fit: 'High', value: 1100000 },
-      { score: 86, title: 'Digital Health for UHC', summary: 'Drafting technical approach', funder: 'European Union', country: 'Multiple countries', focus: 'Digital health', owner: 'Gráinne O\'Casey', initials: 'GO', progress: 40, next: 'Complete concept note', date: '15 Oct 2026', fit: 'High', value: 2400000 },
-      { score: 84, title: 'Health Workforce Capacity Building', summary: 'Team and workplan development', funder: 'World Bank', country: 'Ghana', focus: 'Health workforce', owner: 'Brendan Lawler', initials: 'BL', progress: 25, next: 'Assemble core team', date: '3 Nov 2026', fit: 'Medium', value: 900000 }
-    ],
-    Submitted: [
-      { score: 92, title: 'Health Systems Governance Advisory', summary: 'Submitted · awaiting response', funder: 'World Bank', country: 'Kenya', focus: 'Governance', owner: 'Lizeth Hernandez-Rubio', initials: 'LH', progress: 100, next: 'Funder response', date: '18 Sep 2026', fit: 'High', value: 1650000 },
-      { score: 87, title: 'Regional Health Financing Support', summary: 'Submitted · clarification window', funder: 'African Development Bank', country: 'Rwanda', focus: 'Health financing', owner: 'Kirby McDonald', initials: 'KM', progress: 100, next: 'Monitor response', date: '24 Sep 2026', fit: 'High', value: 940000 }
-    ]
+  // Pipeline & Proposals — real opportunities only (layout: Yael's v51).
+  //  • Qualified: the latest search's Recommended opportunities nobody has
+  //    moved yet (read live, never stored).
+  //  • Internal review → Proposal → Submitted: stored in Firestore through
+  //    /api/pipeline (owner, delivery plan, comments, history), so everyone
+  //    using the app sees the same pipeline.
+  // window.pipelineStats() gives the Dashboard and Copilot the same numbers.
+  const STAGES = ['Qualified', 'Internal review', 'Proposal', 'Submitted'];
+  const STAGE_LABEL = { Qualified: 'Qualified', 'Internal review': 'Internal review', Proposal: 'Proposal in production', Submitted: 'Submitted' };
+  const esc = v => (typeof escapeHtml === 'function' ? escapeHtml(v == null ? '' : String(v)) : String(v == null ? '' : v));
+  const say = m => { if (typeof toast === 'function') toast(m); };
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  const records = new Map(); // key -> stored pipeline record
+  let storeMode = null, storeError = null, loaded = false;
+  let activeStage = 'Qualified', activeKey = null;
+
+  // ---- Real opportunities ---------------------------------------------------
+  // Stable id for a notice across searches: its source URL, else source + title.
+  function oppKey(o) {
+    const basis = `${o.sourceUrl || ''}|${o.source || ''}|${o.title || ''}`.toLowerCase();
+    let a = 0x811c9dc5, b = 5381;
+    for (let i = 0; i < basis.length; i++) { const c = basis.charCodeAt(i); a = Math.imul(a ^ c, 16777619) >>> 0; b = (Math.imul(b, 33) + c) >>> 0; }
+    return `op${a.toString(36)}${b.toString(36)}`;
+  }
+  const liveOpps = () => (typeof activeOpportunities === 'function' ? activeOpportunities() : (typeof opportunities !== 'undefined' ? opportunities : [])) || [];
+  const findLive = key => liveOpps().find(o => oppKey(o) === key) || null;
+  const snapshot = o => ({ title: o.title, org: o.org, country: o.country, pillar: o.pillar, type: o.type, source: o.source, sourceUrl: o.sourceUrl, value: o.value, due: o.due, score: o.score, summary: (o.meta && o.meta.objective) || '' });
+
+  function stageItems(stage) {
+    if (stage === 'Qualified') {
+      return liveOpps().filter(o => o.status === 'Recommended' && !records.has(oppKey(o)))
+        .map(o => ({ key: oppKey(o), stage: 'Qualified', opp: snapshot(o), owner: '', deliverables: [], comments: [], history: [] }));
+    }
+    return [...records.values()].filter(r => r.stage === stage).sort((x, y) => String(y.updatedAt || '').localeCompare(String(x.updatedAt || '')));
+  }
+  const itemByKey = key => records.get(key) || stageItems('Qualified').find(i => i.key === key) || null;
+
+  // ---- Dates, values, derived fields ---------------------------------------
+  const parseDay = t => { if (!t) return null; const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(t) ? `${t}T12:00:00` : t); return Number.isNaN(d.getTime()) ? null : d; };
+  const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const short = t => { const d = parseDay(t); return d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : (t || ''); };
+  const fmtDay = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const when = t => { const d = parseDay(t); return d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''; };
+  // Published value → lower bound in USD ("$10–30 million" → 10,000,000).
+  function parseMoney(v) {
+    const m = /\$\s?([\d.,]+)(?:\s*[–-]\s*\$?[\d.,]+)?\s*(billion|bn|million|m\b|thousand|k\b)?/i.exec(v || '');
+    if (!m) return 0;
+    const n = Number(m[1].replace(/,/g, '')); if (!Number.isFinite(n)) return 0;
+    const u = (m[2] || '').toLowerCase();
+    return n * (u.startsWith('b') ? 1e9 : u.startsWith('m') ? 1e6 : u.startsWith('t') || u === 'k' ? 1e3 : 1);
+  }
+  const fmtValue = n => (n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `$${Math.round(n / 1e3)}K` : `$${Math.round(n)}`);
+  const fitOf = s => (s >= 85 ? 'High' : s >= 65 ? 'Medium' : 'Low');
+  const initials = n => String(n || '').split(/\s+/).filter(Boolean).map(p => p[0]).join('').slice(0, 2).toUpperCase();
+  // Aceso's team from the Knowledge Base (team-directory.js loads later).
+  let teamCache = null;
+  const team = () => {
+    if (!teamCache && typeof window.knowledgeBaseTeam === 'function') teamCache = (window.knowledgeBaseTeam() || []).filter(p => p && p.name).map(p => ({ name: p.name, role: p.role || '' }));
+    return teamCache || [];
   };
+  const roleOf = name => (team().find(p => p.name === name) || {}).role || '';
 
-  const plans = [
-    { title: 'Maternal Health Systems Strengthening', funder: 'UNFPA', country: 'Tanzania', due: '28 Sep 2026',
-      steps: [['Initial opportunity assessment', '2 Sep', true, 'Kirby McDonald'], ['Assemble core team', '4 Sep', true, 'Kirby McDonald · Jonty Roland'], ['Review funder guidelines', '7 Sep', true, 'Gráinne O\'Casey'], ['Develop concept note', '16 Sep', false, 'Lizeth Hernandez-Rubio · Kirby McDonald'], ['Internal review and approval', '22 Sep', false, 'Jonty Roland'], ['Prepare full proposal', '6 Oct', false, 'Proposal team']],
-      history: [['7 Sep', 'Funder guidelines reviewed', 'UNFPA-guidelines.pdf'], ['4 Sep', 'Core team confirmed', 'Team-availability.xlsx'], ['2 Sep', 'Opportunity assessment completed', 'Assessment-v1.docx']] },
-    { title: 'Digital Health for UHC', funder: 'EU', country: 'Multiple countries', due: '15 Oct 2026',
-      steps: [['Requirements mapped', '5 Sep', true, 'Gráinne O\'Casey'], ['Win themes agreed', '8 Sep', true, 'Gráinne O\'Casey · Lizeth Hernandez-Rubio'], ['Draft technical approach', '24 Sep', false, 'Jonty Roland'], ['Past performance selected', '28 Sep', false, 'Lizeth Hernandez-Rubio'], ['Pricing review', '8 Oct', false, 'Finance · Maureen Lewis']],
-      history: [['8 Sep', 'Win themes approved', 'Win-themes-v2.docx'], ['5 Sep', 'Requirements mapped', 'Compliance-matrix.xlsx']] },
-    { title: 'Health Workforce Capacity Building', funder: 'World Bank', country: 'Ghana', due: '3 Nov 2026',
-      steps: [['Kickoff complete', '7 Sep', true, 'Brendan Lawler'], ['Partner validation', '18 Sep', false, 'Kirby McDonald'], ['Draft outline', '25 Sep', false, 'Brendan Lawler · Lizeth Hernandez-Rubio'], ['Team CVs', '2 Oct', false, 'People operations']],
-      history: [['7 Sep', 'Proposal kickoff held', 'Kickoff-notes.pdf']] }
-  ];
-  let activeStage = 'Qualified';
-  let activePlan = 0;
+  const doneCount = i => (i.deliverables || []).filter(d => d.done).length;
+  function progress(i) {
+    if (i.stage === 'Proposal') { const n = (i.deliverables || []).length; return n ? Math.round(doneCount(i) / n * 100) : 0; }
+    return i.stage === 'Submitted' ? 100 : null;
+  }
+  const nextStep = i => (i.deliverables || []).find(d => !d.done) || null;
+  function nextAction(i) {
+    if (i.stage === 'Qualified') return { label: 'Decide whether to pursue', date: i.opp.due, text: i.opp.due ? `Deadline ${i.opp.due}` : 'No deadline published' };
+    if (i.stage === 'Internal review') return { label: 'Pursuit decision', date: i.opp.due, text: i.opp.due ? `Deadline ${i.opp.due}` : 'No deadline published' };
+    if (i.stage === 'Proposal') { const s = nextStep(i); return s ? { label: s.name, date: s.due, text: s.due ? `Due ${short(s.due)}` : 'No due date' } : { label: 'Ready to submit', date: i.opp.due, text: i.opp.due ? `Deadline ${i.opp.due}` : '' }; }
+    return { label: 'Awaiting funder response', date: i.submittedAt, text: i.submittedAt ? `Submitted ${short(i.submittedAt)}` : 'Submitted' };
+  }
+  const SUBLINE = { Qualified: () => 'Recommended by the agent', 'Internal review': () => 'Awaiting pursuit decision', Proposal: i => `${doneCount(i)} of ${(i.deliverables || []).length} deliverables complete`, Submitted: () => 'Submitted · awaiting response' };
 
-  // Date navigation (same control as the Dashboard): filters every stage by
-  // each row's next-action / due date.
+  // ---- Date navigation (same control as the Dashboard) ----------------------
   let range = 'all', custom = { from: '', to: '' };
   const RANGE_LABEL = { all: 'All dates', week: 'This week', month: 'This month', quarter: 'This quarter' };
-  const parseDay = t => { const d = new Date(Date.parse(t)); return Number.isNaN(d.getTime()) ? null : d; };
-  const fmtDay = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   function rangeBounds() {
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    if (range === 'week') { const a = new Date(now); a.setDate(a.getDate() - ((a.getDay() + 6) % 7)); const b = new Date(a); b.setDate(b.getDate() + 6); b.setHours(23, 59, 59); return [a, b]; }
+    const now = today();
+    if (range === 'week') { const a = addDays(now, -((now.getDay() + 6) % 7)); const b = addDays(a, 6); b.setHours(23, 59, 59); return [a, b]; }
     if (range === 'month') return [new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)];
     if (range === 'quarter') { const q0 = Math.floor(now.getMonth() / 3) * 3; return [new Date(now.getFullYear(), q0, 1), new Date(now.getFullYear(), q0 + 3, 0, 23, 59, 59)]; }
-    if (range === 'custom' && custom.from && custom.to) return [new Date(custom.from + 'T00:00:00'), new Date(custom.to + 'T23:59:59')];
+    if (range === 'custom' && custom.from && custom.to) return [new Date(`${custom.from}T00:00:00`), new Date(`${custom.to}T23:59:59`)];
     return null;
   }
-  const inRange = t => { const b = rangeBounds(); if (!b) return true; const d = parseDay(t); return !!d && d >= b[0] && d <= b[1]; };
-  const rows = stage => stageData[stage].filter(x => inRange(x.date));
+  const inRange = i => { const b = rangeBounds(); if (!b) return true; const d = parseDay(nextAction(i).date); return !!d && d >= b[0] && d <= b[1]; };
+  const rows = stage => stageItems(stage).filter(inRange);
 
   function renderPeriod() {
-    const metrics = document.querySelector('#pipelineMetrics'); if (!metrics) return;
-    let box = document.querySelector('#pipelinePeriod');
+    const metrics = $('#pipelineMetrics'); if (!metrics) return;
+    let box = $('#pipelinePeriod');
     if (!box) { box = document.createElement('div'); box.id = 'pipelinePeriod'; box.className = 'pl-period'; metrics.before(box); }
     const b = rangeBounds();
     const label = range === 'custom' && !(custom.from && custom.to) ? 'Choose dates' : range === 'all' ? RANGE_LABEL.all : `${RANGE_LABEL[range] || 'Custom range'} · ${fmtDay(b[0])} – ${fmtDay(b[1])}`;
     box.innerHTML = `<span class="pl-period-summary"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg></i><span><small>Next action & due dates</small><strong>${label}</strong></span></span>
       <div class="pl-period-tabs" role="tablist" aria-label="Date range">${['all', 'week', 'month', 'quarter', 'custom'].map(k => `<button type="button" role="tab" aria-selected="${range === k}" class="${range === k ? 'active' : ''}" data-range="${k}">${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)}</button>`).join('')}</div>
       ${range === 'custom' ? `<form class="pl-period-custom"><label><span>From</span><input type="date" name="from" value="${custom.from}" required></label><label><span>To</span><input type="date" name="to" value="${custom.to}" required></label><button type="submit">Apply</button></form>` : ''}`;
-    box.querySelectorAll('[data-range]').forEach(btn => btn.onclick = () => { range = btn.dataset.range; renderStage(); renderPlans(); });
-    const form = box.querySelector('.pl-period-custom');
-    if (form) form.onsubmit = e => { e.preventDefault(); const f = form.from.value, t = form.to.value; if (!f || !t || f > t) { if (typeof toast === 'function') toast('Choose a start date before the end date.'); return; } custom = { from: f, to: t }; renderStage(); renderPlans(); };
+    $$('[data-range]', box).forEach(btn => btn.onclick = () => { range = btn.dataset.range; renderStage(); });
+    const form = $('.pl-period-custom', box);
+    if (form) form.onsubmit = e => { e.preventDefault(); const f = form.from.value, t = form.to.value; if (!f || !t || f > t) { say('Choose a start date before the end date.'); return; } custom = { from: f, to: t }; renderStage(); };
   }
 
-  const STAGES = ['Qualified', 'Internal review', 'Proposal', 'Submitted'];
-  const avg = list => list.length ? Math.round(list.reduce((a, x) => a + x.progress, 0) / list.length) : 0;
-
-  function fmtValue(n) { return n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${Math.round(n / 1e3)}K`; }
-
-  // Read by the Dashboard's pipeline funnel so the two views can never
-  // show different numbers for the same example data.
-  function pipelineStats() {
-    const stages = STAGES;
-    const counts = stages.map(s => stageData[s].length);
-    const totalValue = stages.reduce((sum, s) => sum + stageData[s].reduce((a, x) => a + x.value, 0), 0);
-    const items = stages.flatMap(s => stageData[s].map(x => ({ stage: s, title: x.title, funder: x.funder, country: x.country, owner: x.owner, progressPct: x.progress, nextAction: x.next, date: x.date, fit: x.fit, value: fmtValue(x.value) })));
-    return { stages, counts, totalValue, fmtValue, items };
+  // ---- Storage (Firestore through the server) --------------------------------
+  async function api(method, path, body) {
+    const res = await fetch(path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    return data;
   }
-  window.pipelineStats = pipelineStats;
-
-  function stageRow(item) {
-    return `<button class="pipeline-data-row" data-title="${escapeHtml(item.title)}"><span class="pipeline-check"><input type="checkbox" aria-label="Select ${escapeHtml(item.title)}"></span><span class="pipeline-opportunity"><strong class="stage-score">${item.score}</strong><span><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.summary)}</small></span></span><span><b>${escapeHtml(item.funder)} · ${escapeHtml(item.country)}</b><small>${escapeHtml(item.country)}</small></span><span><b>${escapeHtml(item.focus)}</b></span><span class="pipeline-owner"><i>${escapeHtml(item.initials)}</i><b>${escapeHtml(item.owner)}<small>Analyst</small></b></span><span class="pipeline-progress"><b>${item.progress}%</b><i><u style="width:${item.progress}%"></u></i></span><span class="pipeline-next"><b>${escapeHtml(item.next)}</b><small>${escapeHtml(item.date)}</small></span><span class="fit-pill ${item.fit.toLowerCase()}">${escapeHtml(item.fit)}</span><em>›</em></button>`;
+  async function loadStore() {
+    try {
+      const data = await api('GET', '/api/pipeline');
+      records.clear(); (data.items || []).forEach(r => records.set(r.key, r));
+      storeMode = data.store; storeError = null;
+    } catch (err) { storeError = err.message; }
+    loaded = true;
+    rerender();
   }
+  async function save(key, patch, message) {
+    try {
+      const data = await api('PUT', `/api/pipeline/${key}`, patch);
+      records.set(key, { ...(records.get(key) || {}), ...data.item });
+      if (message) say(message);
+    } catch (err) { say(`Could not save: ${err.message}`); await loadStore(); return false; }
+    rerender();
+    return true;
+  }
+  const event = (text, detail = '') => ({ at: new Date().toISOString(), text, detail });
+  const withEvent = (rec, text, detail) => [event(text, detail), ...((rec && rec.history) || [])];
+
+  // A starting plan when an opportunity enters Proposal: dates spread back
+  // from the published deadline (or the next 30 days). Every step is editable.
+  function suggestedPlan(item) {
+    const start = today(), due = parseDay(item.opp.due);
+    const end = due && due > addDays(start, 7) ? due : addDays(start, 30);
+    const span = Math.round((end - start) / 864e5);
+    return [['Go / no-go and eligibility check', 0.1], ['Assemble core team', 0.2], ['Review funder guidelines and TOR', 0.3], ['Draft technical approach', 0.6], ['Internal review and approval', 0.8], ['Submit proposal', 0.95]]
+      .map(([name, f]) => ({ name, owner: item.owner || '', due: iso(addDays(start, Math.max(1, Math.round(span * f)))), done: false }));
+  }
+
+  async function moveTo(item, stage) {
+    const rec = records.get(item.key);
+    const patch = { stage, opp: item.opp, history: withEvent(rec, `Moved to ${STAGE_LABEL[stage].toLowerCase()}`) };
+    if (stage === 'Proposal' && !((rec && rec.deliverables) || []).length) {
+      patch.deliverables = suggestedPlan({ ...item, owner: (rec && rec.owner) || item.owner || '' });
+      patch.history = [event('Starting delivery plan created', `${patch.deliverables.length} suggested deliverables — edit as needed`), ...patch.history];
+    }
+    if (stage === 'Submitted') patch.submittedAt = new Date().toISOString();
+    const ok = await save(item.key, patch, `Moved to ${STAGE_LABEL[stage].toLowerCase()}.`);
+    if (ok) { activeStage = stage; if (stage === 'Proposal') activeKey = item.key; closeDrawer(); rerender(); }
+  }
+  async function removeItem(item) {
+    if (!confirm(`Remove “${item.opp.title}” from the pipeline?`)) return;
+    try { await api('DELETE', `/api/pipeline/${item.key}`); records.delete(item.key); say('Removed from the pipeline.'); }
+    catch (err) { say(`Could not remove: ${err.message}`); }
+    closeDrawer(); rerender();
+  }
+  // "Approve to pursue" on any opportunity record puts it in Internal review.
+  window.pipelineApprove = async o => {
+    if (!o || !o.title) return;
+    const key = oppKey(o), rec = records.get(key);
+    if (rec && rec.stage !== 'Declined') { say(`Already in the pipeline · ${STAGE_LABEL[rec.stage] || rec.stage}.`); return; }
+    await moveTo({ key, opp: snapshot(o), owner: '' }, 'Internal review');
+  };
+
+  // ---- Stage cards and table -------------------------------------------------
+  function stageCopy(stage) {
+    const list = rows(stage);
+    if (stage === 'Qualified') { const v = list.reduce((a, i) => a + parseMoney(i.opp.value), 0); return v ? `${fmtValue(v)} potential` : 'Value not published'; }
+    if (stage === 'Internal review') return `${list.length} need decision`;
+    if (stage === 'Proposal') return list.length ? `${Math.round(list.reduce((a, i) => a + progress(i), 0) / list.length)}% average progress` : 'No proposals yet';
+    return `${list.length} awaiting response`;
+  }
+  function stageRow(i) {
+    const o = i.opp, p = progress(i), na = nextAction(i), fit = fitOf(o.score || 0);
+    return `<button class="pipeline-data-row ${i.stage === 'Proposal' && i.key === activeKey ? 'selected-proposal' : ''}" data-key="${esc(i.key)}"><span class="pipeline-check"><input type="checkbox" aria-label="Select ${esc(o.title)}"></span><span class="pipeline-opportunity"><strong class="stage-score">${o.score == null ? '—' : o.score}</strong><span><b>${esc(o.title)}</b><small>${esc(SUBLINE[i.stage](i))}</small></span></span><span><b>${esc(o.org || '—')} · ${esc(o.country || '—')}</b><small>${esc(o.source || '')}</small></span><span><b>${esc(o.pillar || '—')}</b></span><span class="pipeline-owner ${i.owner ? '' : 'unassigned'}"><i>${i.owner ? esc(initials(i.owner)) : '+'}</i><b>${esc(i.owner || 'Unassigned')}<small>${esc(i.owner ? roleOf(i.owner) : 'Assign in the panel')}</small></b></span><span class="pipeline-progress">${p == null ? '<b>—</b>' : `<b>${p}%</b><i><u style="width:${p}%"></u></i>`}</span><span class="pipeline-next"><b>${esc(na.label)}</b><small>${esc(na.text)}</small></span><span class="fit-pill ${fit.toLowerCase()}">${fit}</span><em>›</em></button>`;
+  }
+  const EMPTY = {
+    Qualified: 'No recommended opportunities waiting. New ones appear here after a search; opportunities that need a decision stay on the Opportunities screen.',
+    'Internal review': 'Nothing awaiting internal review. Move a qualified opportunity here, or use “Approve to pursue” on any opportunity record.',
+    Proposal: 'No proposals in production yet. Approve an opportunity in Internal review to start its delivery plan.',
+    Submitted: 'No submitted proposals yet.'
+  };
 
   function renderStage(stage) {
-    if (typeof stage === 'string' && stageData[stage]) activeStage = stage;
+    if (typeof stage === 'string' && STAGES.includes(stage)) activeStage = stage;
+    const view = $('#pipelineView'); if (!view) return;
     renderPeriod();
-    // Proposal shows only "Proposal production" (the stage table repeats it).
-    document.querySelector('#pipelineView')?.classList.toggle('proposal-mode', activeStage === 'Proposal');
-    const stageSummary = [
-      ['Qualified', rows('Qualified').length, `${fmtValue(rows('Qualified').reduce((a, x) => a + x.value, 0))} potential`],
-      ['Internal review', rows('Internal review').length, `${rows('Internal review').length} need decision`],
-      ['Proposal', rows('Proposal').length, `${avg(rows('Proposal'))}% average progress`],
-      ['Submitted', rows('Submitted').length, `${rows('Submitted').filter(x => x.next === 'Funder response').length} response due`]
-    ];
-    const metrics = document.querySelector('#pipelineMetrics');
+    view.classList.toggle('proposal-mode', activeStage === 'Proposal');
+    const metrics = $('#pipelineMetrics');
     if (metrics) {
-      metrics.innerHTML = stageSummary.map(([name, count, copy]) => `<button data-pstage="${name}" class="${name === activeStage ? 'active' : ''}"><span>${name}</span><b>${count}</b><small>${copy}</small></button>`).join('');
-      metrics.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { activeStage = button.dataset.pstage; renderStage(); renderPlans(); }));
+      metrics.innerHTML = STAGES.map(s => `<button data-pstage="${s}" class="${s === activeStage ? 'active' : ''}"><span>${s}</span><b>${s === 'Qualified' || loaded ? rows(s).length : '…'}</b><small>${s === 'Qualified' || loaded ? stageCopy(s) : 'Loading…'}</small></button>`).join('');
+      $$('button', metrics).forEach(b => b.onclick = () => { activeStage = b.dataset.pstage; renderStage(); });
     }
-    if (!document.querySelector('#exampleDataNote')) {
-      const note = document.createElement('div'); note.id = 'exampleDataNote'; note.className = 'status-mapping';
-      note.innerHTML = '<b>Example pipeline —</b> illustrative projects shown to demonstrate the workflow. Live pipeline tracking (real opportunities moving through these stages) is not connected yet.';
-      metrics?.after(note);
-    }
-    const title = document.querySelector('#selectedStageTitle'); if (title) title.textContent = activeStage === 'Proposal' ? 'Proposals in production' : `${activeStage} opportunities`;
-    const copy = document.querySelector('#selectedStageCopy'); if (copy) copy.textContent = activeStage === 'Proposal' ? 'Track owners, deadlines and proposal completion.' : 'Review evidence, ownership and the next required decision.';
-    const table = document.querySelector('#pipelineTable');
+    let note = $('#pipelineStoreNote');
+    if (!note) { note = document.createElement('div'); note.id = 'pipelineStoreNote'; note.className = 'status-mapping'; metrics?.after(note); }
+    note.hidden = !(storeError || storeMode === 'memory');
+    note.innerHTML = storeError ? `<b>Pipeline storage is unavailable —</b> ${esc(storeError)}. Qualified still shows the latest search.` : storeMode === 'memory' ? '<b>Not saved to the database —</b> Firestore is not configured on this server, so pipeline changes last only until it restarts.' : '';
+    const title = $('#selectedStageTitle'); if (title) title.textContent = activeStage === 'Proposal' ? 'Proposals in production' : `${activeStage} opportunities`;
+    const copy = $('#selectedStageCopy'); if (copy) copy.textContent = activeStage === 'Proposal' ? 'Track owners, deadlines and proposal completion. Select a proposal to open its workspace below.' : activeStage === 'Qualified' ? 'Recommended by the agent in the latest search and ready for a pursuit decision.' : activeStage === 'Internal review' ? 'Opportunities the team is deciding whether to pursue.' : 'Proposals sent to the funder.';
+    const table = $('#pipelineTable');
     if (table) {
-      table.innerHTML = `<div class="pipeline-columns"><span></span><span>Opportunity</span><span>Funder · Country</span><span>Focus area</span><span>Owner</span><span>Progress</span><span>Next action</span><span>Fit</span><span></span></div>${rows(activeStage).map(stageRow).join('') || '<p class="pl-empty">No opportunities in this stage for the selected dates.</p>'}`;
-      table.querySelectorAll('.pipeline-data-row').forEach(row => {
-        row.addEventListener('click', event => { if (event.target.matches('input')) return; const item = stageData[activeStage].find(x => x.title === row.dataset.title); openPipelineOpportunity(item); });
+      const list = rows(activeStage);
+      const empty = activeStage !== 'Qualified' && !loaded ? 'Loading the pipeline…' : range !== 'all' && stageItems(activeStage).length ? 'No opportunities in this stage for the selected dates.' : EMPTY[activeStage];
+      table.innerHTML = `<div class="pipeline-columns"><span></span><span>Opportunity</span><span>Funder · Country</span><span>Focus area</span><span>Owner</span><span>Progress</span><span>Next action</span><span>Fit</span><span></span></div>${list.map(stageRow).join('') || `<p class="pl-empty">${esc(empty)}</p>`}`;
+      $$('.pipeline-data-row', table).forEach(row => row.onclick = e => {
+        if (e.target.matches('input')) return;
+        const item = itemByKey(row.dataset.key); if (!item) return;
+        if (activeStage === 'Proposal') { activeKey = item.key; renderStage(); $('#deliveryPlan')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+        openPipelineOpportunity(item);
       });
     }
+    renderWorkspace();
   }
 
-  function planPercent(plan) { return Math.round(plan.steps.filter(step => step[2]).length / plan.steps.length * 100); }
-  function renderPlans() {
-    const box = document.querySelector('#proposalPlans'); if (!box) return;
-    const visible = plans.map((plan, index) => ({ plan, index })).filter(x => inRange(x.plan.due));
-    const head = document.querySelector('#pipelineView .workspace-card h2'); if (head) head.textContent = `${visible.length} active proposal${visible.length === 1 ? '' : 's'}`;
-    const all = document.querySelector('#pipelineView .workspace-card .text-link'); if (all) { all.textContent = range === 'all' ? '' : 'Show all dates'; all.onclick = () => { range = 'all'; renderStage(); renderPlans(); }; }
-    box.innerHTML = visible.length ? visible.map(({ plan, index }) => {
-      const pc = planPercent(plan), next = plan.steps.find(step => !step[2]);
-      return `<button class="proposal-summary" data-plan="${index}"><span class="proposal-brand">${index === 0 ? '⚕' : index === 1 ? '✦' : '◎'}</span><span><b>${escapeHtml(plan.title)}</b><small>${escapeHtml(plan.funder)} · ${escapeHtml(plan.country)}</small></span><span class="ps-next"><small>Next deliverable</small><b>${escapeHtml(next ? `${next[0]} · ${next[1]}` : 'All deliverables complete')}</b></span><strong>${pc}%</strong><i><u style="width:${pc}%"></u></i><small>Due<br>${escapeHtml(plan.due)}</small><em>›</em></button>`;
-    }).join('') : '<p class="pl-empty">No proposals due in the selected dates.</p>';
-    box.querySelectorAll('.proposal-summary').forEach(button => button.addEventListener('click', () => openProposal(Number(button.dataset.plan))));
+  // ---- Side panel for Qualified / Internal review / Submitted ----------------
+  function ownerSelect(item, attr = 'data-owner-select') {
+    const names = team().map(p => p.name);
+    if (item.owner && !names.includes(item.owner)) names.unshift(item.owner);
+    return `<select ${attr} aria-label="Owner"><option value="">Unassigned</option>${names.map(n => `<option ${n === item.owner ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
+  }
+  function drawerHTML(item) {
+    const o = item.opp, na = nextAction(item);
+    const actions = item.stage === 'Qualified' ? '<button class="primary" data-move="Internal review">Move to internal review →</button>'
+      : item.stage === 'Internal review' ? '<button class="primary" data-move="Proposal">Approve for proposal →</button>'
+      : '<button class="secondary" data-move="Proposal">Back to proposal</button>';
+    return `<div class="reference-drawer pipeline-drawer"><p class="eyebrow">${esc(STAGE_LABEL[item.stage])} · ${esc(o.org || '')}</p>
+      <div class="drawer-heading"><div><h2>${esc(o.title)}</h2><p>${esc(o.country || '')}${o.pillar ? ` · ${esc(o.pillar)}` : ''}</p></div><span class="drawer-fit"><b>${o.score == null ? '—' : `${o.score}%`}</b><small>FIT</small></span></div>
+      <div class="recommendation-line"><b>● &nbsp; ${esc(na.label)}</b><span>${esc(na.text)}</span></div>
+      <section><h3>Project summary</h3><p>${esc(o.summary || 'No summary available for this opportunity yet.')}</p></section>
+      <div class="reference-facts"><div><i>◉</i><span><small>Value</small><b>${esc(o.value || 'Not disclosed')}</b></span></div><div><i>▣</i><span><small>Deadline</small><b>${esc(o.due || 'Not specified')}</b></span></div><div><i>▤</i><span><small>Source</small><b>${esc(o.source || '—')}</b></span></div><div><i>▥</i><span><small>Focus area</small><b>${esc(o.pillar || '—')}</b></span></div></div>
+      ${item.stage === 'Qualified' ? '' : `<label class="pl-owner"><span>Owner</span>${ownerSelect(item)}</label>`}
+      <div class="pl-stage-actions">${actions}${item.stage === 'Qualified' ? '' : '<button class="link" data-remove-item>Remove from pipeline</button>'}</div>
+      <div class="drawer-actions">${o.sourceUrl ? `<a class="secondary" href="${esc(o.sourceUrl)}" target="_blank" rel="noopener">View original publication ↗</a>` : ''}<button class="primary" id="pipelineOpenFull">Open full opportunity record →</button></div></div>`;
+  }
+  function openRecord(item) {
+    if (typeof window.openDetail !== 'function') return;
+    const live = findLive(item.key), o = item.opp;
+    window.openDetail(live || { id: item.key, type: o.type || 'Opportunity', org: o.org, country: o.country, title: o.title, score: o.score, value: o.value || 'Not disclosed', due: o.due || 'Not specified', pillar: o.pillar, source: o.source, sourceUrl: o.sourceUrl, state: STAGE_LABEL[item.stage], meta: { objective: o.summary } });
+  }
+  function closeDrawer() {
+    $('#drawerScrim')?.classList.remove('show'); $('#quickDrawer')?.classList.remove('show'); $('#quickDrawer')?.setAttribute('aria-hidden', 'true');
+  }
+  function openPipelineOpportunity(item) {
+    if (item.stage === 'Proposal') { activeStage = 'Proposal'; activeKey = item.key; renderStage(); $('#deliveryPlan')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    const box = $('#drawerContent'); if (!box) return;
+    box.innerHTML = drawerHTML(item);
+    $('#drawerScrim')?.classList.add('show'); $('#quickDrawer')?.classList.add('show'); $('#quickDrawer')?.setAttribute('aria-hidden', 'false');
+    $('#quickDrawer').scrollTop = 0;
+    $('#pipelineOpenFull', box).onclick = () => openRecord(item);
+    $$('[data-move]', box).forEach(b => b.onclick = () => moveTo(item, b.dataset.move));
+    const rm = $('[data-remove-item]', box); if (rm) rm.onclick = () => removeItem(item);
+    const sel = $('[data-owner-select]', box);
+    if (sel) sel.onchange = () => save(item.key, { owner: sel.value, history: withEvent(records.get(item.key), sel.value ? `Owner set to ${sel.value}` : 'Owner removed') }, 'Owner saved.');
   }
 
-  function addHistoryEvidence(plan, label, fileName) { if (!fileName) return; plan.history.unshift(['Today', label, fileName]); }
+  // ---- Proposal workspace (selected proposal, below the table) --------------
+  let userName = '';
+  try { userName = localStorage.getItem('aceso_user_name') || ''; } catch (e) { /* private mode */ }
 
-  function openEvidenceDialog(plan, stepIndex) {
-    let dialog = document.querySelector('#deliverableEvidenceDialog');
+  function stepMarkup(d, index) {
+    return `<div class="delivery-step ${d.done ? 'complete' : ''}"><input data-plan-step="${index}" type="checkbox" aria-label="Mark ${esc(d.name)} as complete" ${d.done ? 'checked' : ''}><span><b>${esc(d.name)}</b><em>${esc(d.owner || 'Unassigned')}</em></span><small class="step-due"><span>${d.done ? 'Completed' : 'Due'}</span><b>${esc(short(d.done ? (d.doneAt || d.due) : d.due) || '—')}</b></small><button type="button" data-remove-step="${index}" aria-label="Remove ${esc(d.name)}">×</button></div>`;
+  }
+  function formMarkup(item) {
+    const members = [...new Set([item.owner, ...(item.deliverables || []).map(d => d.owner)].filter(Boolean))];
+    const people = [...new Set([...members, ...team().map(p => p.name)])];
+    return `<form class="new-step-form deliverable-form" id="newStepForm"><header><div><p class="eyebrow">NEW DELIVERABLE</p><h3>Add work to the delivery plan</h3><p>Define ownership and due date. Evidence can be added now or when the work is completed.</p></div><button type="button" id="closeNewStep" aria-label="Close">×</button></header>
+      <div class="dl-body"><div class="dl-fields"><label><span>Deliverable name</span><input id="newStepName" placeholder="e.g. Draft technical approach" required></label><label><span>Responsible person(s)</span><input id="newStepOwner" list="dlPeople" placeholder="Select or enter names" required></label><label><span>Due date</span><input id="newStepDate" type="date" required></label></div><datalist id="dlPeople">${people.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <div class="dl-evidence"><span class="dl-label">Supporting evidence <small>Optional</small></span><div><label class="dl-ev"><i>▤</i><span><b>Upload file / PDF</b><input id="newStepFile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"></span></label><label class="dl-ev"><i>↗</i><span><b>Attach link</b><input id="newStepLink" type="url" placeholder="https://..."></span></label></div></div>
+      <section class="dl-email"><label class="dl-email-toggle"><input type="checkbox" id="dlEmail"><span><b>Send email notification</b><small>Choose exactly who receives it and when.</small></span><em>Optional</em></label><div class="dl-email-body" hidden><div class="dl-radios"><label><input type="radio" name="dlWho" value="all" checked><span><b>All proposal members</b><small>${esc(members.join(', ') || 'The owner and everyone with a deliverable')}</small></span></label><label><input type="radio" name="dlWho" value="specific"><span><b>Specific recipients</b><small>One person or as many as needed</small></span></label></div><div class="dl-recipients" hidden><span class="dl-label">Email recipients</span><div class="dl-chips"></div><div class="dl-add"><input type="email" id="dlRecipient" placeholder="name@acesoglobal.org"><button type="button" id="dlAddRecipient">＋ Add recipient</button></div><small>Add one email at a time. You can remove any recipient before scheduling.</small></div><div class="dl-timing"><label><span>Delivery timing</span><select id="dlTiming"><option value="now">Send when the deliverable is added</option><option value="schedule">Schedule a specific date and time</option></select></label><label class="dl-when" hidden><span>Send on</span><input type="datetime-local" id="dlWhen"></label></div></div></section></div>
+      <footer><button type="button" class="secondary" id="cancelNewStep">Cancel</button><button class="primary">Add deliverable →</button></footer></form>`;
+  }
+
+  function renderWorkspace() {
+    const box = $('#deliveryPlan'); if (!box) return;
+    const proposals = activeStage === 'Proposal' ? rows('Proposal') : [];
+    if (!proposals.length) { box.hidden = true; box.innerHTML = ''; return; }
+    if (!proposals.some(p => p.key === activeKey)) activeKey = proposals[0].key;
+    const item = records.get(activeKey), o = item.opp, list = item.deliverables || [];
+    const done = doneCount(item), pc = progress(item), next = nextStep(item);
+    const overdue = list.filter(d => !d.done && parseDay(d.due) && parseDay(d.due) < today());
+    const approval = list.find(d => !d.done && /review|approv/i.test(d.name));
+    const members = [...new Set([item.owner, ...list.map(d => d.owner)].flatMap(n => String(n || '').split(/\s*[·,]\s*/)).map(n => n.trim()).filter(Boolean))];
+    const comments = [...(item.comments || [])].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    box.hidden = false;
+    box.innerHTML = `<header class="proposal-workspace-head"><div><p class="eyebrow">SELECTED PROPOSAL</p><h2>${esc(o.title)}</h2><p>${esc(o.org || '')}${o.country ? ` · ${esc(o.country)}` : ''} · Proposal stage</p></div><div class="pw-head-actions"><span>● &nbsp; In progress</span><button type="button" class="pw-submit" data-submit>Mark as submitted</button></div></header>
+      <section class="proposal-workspace-summary"><div><small>Proposal readiness</small><b>${pc}%</b><i><u style="width:${pc}%"></u></i><em>${done} of ${list.length} deliverables complete</em></div><div><small>Next action</small><b>${esc(next ? next.name : 'No action pending')}</b></div><div><small>Deadline</small><b>${esc(o.due || 'Not specified')}</b></div><div><small>Owner</small>${ownerSelect(item, 'data-ws-owner')}</div></section>
+      <section class="proposal-attention"><header><p class="eyebrow">NEEDS ATTENTION NOW</p></header><div><article><small>Next action</small><b>${esc(next ? next.name : 'All deliverables complete')}</b><em>${esc(next && next.due ? `Due ${short(next.due)}` : next ? 'No due date' : 'Ready to submit')}</em></article><article><small>Overdue</small><b>${overdue.length ? `${overdue.length} overdue deliverable${overdue.length === 1 ? '' : 's'}` : 'Nothing overdue'}</b><em>${esc(overdue.length ? overdue.map(d => d.name).join(', ') : 'Every open deliverable is on schedule')}</em></article><article><small>Next approval</small><b>${esc(approval ? approval.name : 'No approval pending')}</b><em>${esc(approval && approval.due ? `Due ${short(approval.due)}` : '—')}</em></article></div></section>
+      <div class="proposal-workspace-body"><main><section class="proposal-delivery-sequence"><header><div><p class="eyebrow">EDITABLE DELIVERY PLAN</p><h3>From plan to submission</h3><p>Deliverables, owners, evidence and dates in one continuous sequence.</p></div><button type="button" id="addPlanStep">＋ Add deliverable</button></header><div class="delivery-sequence">${list.map(stepMarkup).join('') || '<p class="pl-empty">No deliverables yet. Add the first one.</p>'}</div></section></main>
+      <aside><section><h3>Core team</h3><div class="workspace-team">${members.map(n => `<span><i>${esc(initials(n))}</i><b>${esc(n)}${roleOf(n) ? `<small>${esc(roleOf(n))}</small>` : ''}</b></span>`).join('') || '<small>No team members assigned yet.</small>'}</div></section>
+      <section class="workspace-comments-panel"><header><h3>Team comments</h3><span>${comments.length}</span></header><div class="workspace-comments" id="proposalComments">${comments.map(c => `<article><i>${esc(initials(c.author))}</i><span><b>${esc(c.author)}</b><p>${esc(c.text)}</p><small>${esc(when(c.at))}</small></span></article>`).join('') || '<small class="wc-empty">No comments yet.</small>'}</div><form class="workspace-comment-form ${userName ? '' : 'needs-name'}" id="proposalCommentForm">${userName ? '' : '<input class="wc-name" aria-label="Your name" placeholder="Your name" required>'}<input class="wc-text" aria-label="Add a team comment" placeholder="Add a comment…" required><button aria-label="Post comment">↑</button></form></section></aside></div>
+      ${formMarkup(item)}
+      <section class="project-history"><header><div><p class="eyebrow">PROJECT HISTORY</p><h3>Deliverables and evidence</h3></div><label class="evidence-upload">＋ Attach evidence<input id="projectEvidence" type="file" multiple></label></header><div class="history-list">${(item.history || []).map(h => `<div><time>${esc(short(h.at))}</time><span><b>${esc(h.text)}</b>${h.detail ? `<small>${esc(h.detail)}</small>` : ''}</span></div>`).join('') || '<p class="pl-empty">No activity yet.</p>'}</div><p class="pl-caption">Files are not uploaded yet — the history records their names. Links are kept as entered.</p></section>`;
+    bindWorkspace(box, item);
+  }
+
+  function bindWorkspace(box, item) {
+    const key = item.key;
+    const persist = (patch, msg) => save(key, patch, msg);
+    $('[data-submit]', box).onclick = () => { if (confirm('Mark this proposal as submitted to the funder?')) moveTo(item, 'Submitted'); };
+    const ws = $('[data-ws-owner]', box);
+    ws.onchange = () => persist({ owner: ws.value, history: withEvent(item, ws.value ? `Owner set to ${ws.value}` : 'Owner removed') }, 'Owner saved.');
+    $$('[data-plan-step]', box).forEach(input => input.onchange = () => {
+      const index = Number(input.dataset.planStep), list = [...item.deliverables];
+      if (input.checked) { input.checked = false; openEvidenceDialog(item, index); return; }
+      list[index] = { ...list[index], done: false, doneAt: '' };
+      persist({ deliverables: list, history: withEvent(item, `Reopened · ${list[index].name}`) });
+    });
+    $$('[data-remove-step]', box).forEach(btn => btn.onclick = () => {
+      const index = Number(btn.dataset.removeStep), name = item.deliverables[index].name;
+      if (!confirm(`Remove “${name}” from the delivery plan?`)) return;
+      persist({ deliverables: item.deliverables.filter((_, i) => i !== index), history: withEvent(item, `Deliverable removed · ${name}`) });
+    });
+    const form = $('#newStepForm', box);
+    const open = () => { form.classList.add('show'); document.body.classList.add('deliverable-drawer-open'); $('#newStepName', form).focus(); };
+    const close = () => { form.classList.remove('show'); document.body.classList.remove('deliverable-drawer-open'); };
+    $('#addPlanStep', box).onclick = open;
+    $('#closeNewStep', form).onclick = $('#cancelNewStep', form).onclick = close;
+    bindDeliverableForm(form, item, close);
+    $('#projectEvidence', box).onchange = e => {
+      const files = [...e.target.files]; if (!files.length) return;
+      persist({ history: [...files.map(f => event('Evidence attached', f.name)), ...(item.history || [])] }, 'Evidence recorded in the project history.');
+    };
+    $('#proposalCommentForm', box).onsubmit = async e => {
+      e.preventDefault();
+      const nameInput = $('.wc-name', e.currentTarget), text = $('.wc-text', e.currentTarget).value.trim();
+      if (nameInput) { userName = nameInput.value.trim(); try { localStorage.setItem('aceso_user_name', userName); } catch (err) { /* private mode */ } }
+      if (!text || !userName) return;
+      try {
+        const data = await api('POST', `/api/pipeline/${key}/comments`, { author: userName, text });
+        const rec = records.get(key); rec.comments = [...(rec.comments || []), data.comment]; renderWorkspace();
+      } catch (err) { say(`Could not post the comment: ${err.message}`); }
+    };
+  }
+
+  function bindDeliverableForm(form, item, close) {
+    const recipients = [];
+    const f = sel => $(sel, form);
+    const chips = () => { f('.dl-chips').innerHTML = recipients.map((r, i) => `<span>${esc(r)}<button type="button" data-rm="${i}" aria-label="Remove ${esc(r)}">×</button></span>`).join(''); $$('[data-rm]', form).forEach(b => b.onclick = () => { recipients.splice(Number(b.dataset.rm), 1); chips(); }); };
+    const who = () => $('input[name="dlWho"]:checked', form).value;
+    const sync = () => { f('.dl-email-body').hidden = !f('#dlEmail').checked; f('.dl-recipients').hidden = who() !== 'specific'; f('.dl-when').hidden = f('#dlTiming').value !== 'schedule'; };
+    f('#dlEmail').onchange = sync; f('#dlTiming').onchange = sync;
+    $$('input[name="dlWho"]', form).forEach(r => r.onchange = sync);
+    const addRecipient = () => {
+      const v = f('#dlRecipient').value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { say('Enter a valid email address.'); return; }
+      if (!recipients.includes(v)) recipients.push(v);
+      f('#dlRecipient').value = ''; chips();
+    };
+    f('#dlAddRecipient').onclick = addRecipient;
+    f('#dlRecipient').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); addRecipient(); } };
+    form.onsubmit = async e => {
+      e.preventDefault();
+      const email = f('#dlEmail').checked, timing = f('#dlTiming').value, whenAt = f('#dlWhen').value;
+      if (email && who() === 'specific' && !recipients.length) { say('Add at least one recipient, or choose all proposal members.'); return; }
+      if (email && timing === 'schedule' && !whenAt) { say('Choose when the email should be sent.'); return; }
+      const name = f('#newStepName').value.trim(), owner = f('#newStepOwner').value.trim(), due = f('#newStepDate').value;
+      const file = f('#newStepFile').files[0], link = f('#newStepLink').value.trim();
+      const history = [event('Deliverable added', `${name} · ${owner} · due ${short(due)}`)];
+      if (file || link) history.unshift(event(`Evidence added · ${name}`, file ? file.name : link));
+      if (email) {
+        const to = who() === 'all' ? 'All proposal members' : recipients.join(', ');
+        history.unshift(event(`Email notification ${timing === 'schedule' ? 'scheduled' : 'requested'} · ${name}`, `To ${to} · ${timing === 'schedule' ? when(whenAt) : 'on creation'} · not sent (email is not connected yet)`));
+      }
+      close();
+      await save(item.key, { deliverables: [...(item.deliverables || []), { name, owner, due, done: false }], history: [...history, ...(item.history || [])] },
+        email ? 'Deliverable added. The notification is recorded; email sending is not connected yet.' : 'Deliverable added to the delivery plan.');
+    };
+    sync();
+  }
+
+  function openEvidenceDialog(item, index) {
+    let dialog = $('#deliverableEvidenceDialog');
     if (!dialog) {
       document.body.insertAdjacentHTML('beforeend', `<dialog class="evidence-dialog" id="deliverableEvidenceDialog"><form method="dialog"><header><div><p class="eyebrow">COMPLETE DELIVERABLE</p><h2>Complete deliverable</h2><p>Add a file, link or comment if you need a traceable record. Everything is optional.</p></div><button type="button" class="dialog-x" aria-label="Close">×</button></header><div class="evidence-choice-grid"><label><span>▤</span><b>Upload file or PDF</b><small>PDF, DOCX, XLSX or image</small><input id="completionFile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"></label><label><span>↗</span><b>Add a source link</b><small>Drive, SharePoint or reference URL</small><input id="completionLink" type="url" placeholder="https://..."></label></div><label class="evidence-note"><span>Comment <small>Optional</small></span><textarea id="completionNote" placeholder="Add a completion note or approval context..."></textarea></label><footer><button type="button" class="secondary" id="completeWithoutEvidence">✓ Complete only</button><button class="primary" value="save">Save details &amp; complete →</button></footer></form></dialog>`);
-      dialog = document.querySelector('#deliverableEvidenceDialog');
-      dialog.querySelector('.dialog-x').onclick = () => dialog.close('cancel');
+      dialog = $('#deliverableEvidenceDialog');
+      $('.dialog-x', dialog).onclick = () => dialog.close('cancel');
     }
-    const step = plan.steps[stepIndex];
-    dialog.querySelector('h2').textContent = step[0];
-    dialog.querySelector('#completionFile').value = '';
-    dialog.querySelector('#completionLink').value = '';
-    dialog.querySelector('#completionNote').value = '';
-    dialog.querySelector('#completeWithoutEvidence').onclick = () => dialog.close('skip');
-    dialog.oncancel = event => { event.preventDefault(); dialog.close('cancel') };
+    const step = item.deliverables[index];
+    $('h2', dialog).textContent = step.name;
+    $('#completionFile', dialog).value = ''; $('#completionLink', dialog).value = ''; $('#completionNote', dialog).value = '';
+    $('#completeWithoutEvidence', dialog).onclick = () => dialog.close('skip');
+    dialog.oncancel = e => { e.preventDefault(); dialog.close('cancel'); };
     dialog.onclose = () => {
       if (!['save', 'skip'].includes(dialog.returnValue)) return;
+      const history = [event(`Completed · ${step.name}`, step.owner || '')];
       if (dialog.returnValue === 'save') {
-        const file = dialog.querySelector('#completionFile').files[0];
-        const link = dialog.querySelector('#completionLink').value.trim();
-        const note = dialog.querySelector('#completionNote').value.trim();
-        addHistoryEvidence(plan, `File attached · ${step[0]}`, file?.name);
-        addHistoryEvidence(plan, `Link added · ${step[0]}`, link);
-        addHistoryEvidence(plan, `Completion comment · ${step[0]}`, note);
+        const file = $('#completionFile', dialog).files[0], link = $('#completionLink', dialog).value.trim(), note = $('#completionNote', dialog).value.trim();
+        if (file) history.unshift(event(`File attached · ${step.name}`, file.name));
+        if (link) history.unshift(event(`Link added · ${step.name}`, link));
+        if (note) history.unshift(event(`Completion comment · ${step.name}`, note));
       }
-      step[2] = true;
-      renderPlans(); renderDeliveryPlan();
+      const list = [...item.deliverables]; list[index] = { ...step, done: true, doneAt: new Date().toISOString() };
+      save(item.key, { deliverables: list, history: [...history, ...(item.history || [])] });
     };
     dialog.showModal();
   }
 
-  function stepMarkup(step, index, checked) { return `<div class="delivery-step ${checked ? 'complete' : ''}"><input data-plan-step="${index}" type="checkbox" aria-label="Mark ${escapeHtml(step[0])} as complete" ${checked ? 'checked' : ''}><span><b>${escapeHtml(step[0])}</b><em>${escapeHtml(step[3] || 'Unassigned')}</em></span><small class="step-due"><span>${checked ? 'Completed' : 'Due'}</span><b>${escapeHtml(step[1])}</b></small><button type="button" data-remove-step="${index}" aria-label="Remove ${escapeHtml(step[0])}">×</button></div>`; }
-
-  function renderDeliveryPlan() {
-    const box = document.querySelector('#deliveryPlan'); if (!box) return;
-    const plan = plans[activePlan], done = plan.steps.filter(step => step[2]).length, pc = planPercent(plan);
-    box.innerHTML = `<div class="delivery-head"><div><p class="eyebrow">EDITABLE DELIVERY PLAN</p><h2>${escapeHtml(plan.title)}</h2><p>Turn strategy into action. Track deliverables, owners, evidence and deadlines.</p></div><span>● &nbsp; In progress</span></div><div class="delivery-progress"><div><b>${pc}%</b><span>Overall completion</span></div><i><u style="width:${pc}%"></u></i><small>${done} of ${plan.steps.length} deliverables</small><button id="addPlanStep">＋ Add deliverable</button></div><div class="delivery-columns"><section><header><b>Completed</b><span>${done}</span></header>${plan.steps.map((step, index) => step[2] ? stepMarkup(step, index, true) : '').join('')}</section><section><header><b>Pending</b><span>${plan.steps.length - done}</span></header>${plan.steps.map((step, index) => !step[2] ? stepMarkup(step, index, false) : '').join('')}</section></div><form class="deliverable-form" id="newStepForm"><header><div><p class="eyebrow">NEW DELIVERABLE</p><h3>Add work to the delivery plan</h3><p>Define ownership and due date. Evidence can be added now or when the work is completed.</p></div><button type="button" id="closeNewStep" aria-label="Close">×</button></header><div class="dl-fields"><label><span>Deliverable name</span><input id="newStepName" placeholder="e.g. Draft technical approach" required></label><label><span>Responsible person(s)</span><input id="newStepOwner" list="dlPeople" placeholder="Select or enter names" required></label><label><span>Due date</span><input id="newStepDate" type="date" required></label></div><datalist id="dlPeople">${members(plan).map(n => `<option value="${escapeHtml(n)}">`).join('')}</datalist><div class="dl-evidence"><span class="dl-label">Supporting evidence <small>Optional</small></span><div><label class="dl-ev"><i>▤</i><span><b>Upload file / PDF</b><input id="newStepFile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"></span></label><label class="dl-ev"><i>↗</i><span><b>Attach link</b><input id="newStepLink" type="url" placeholder="https://..."></span></label></div></div><section class="dl-email"><label class="dl-email-toggle"><input type="checkbox" id="dlEmail"><span><b>Send email notification</b><small>Choose exactly who receives it and when.</small></span><em>Optional</em></label><div class="dl-email-body" hidden><div class="dl-radios"><label><input type="radio" name="dlWho" value="all" checked><span><b>All proposal members</b><small>${escapeHtml(members(plan).join(', ') || 'The complete team')}</small></span></label><label><input type="radio" name="dlWho" value="specific"><span><b>Specific recipients</b><small>One person or as many as needed</small></span></label></div><div class="dl-recipients" hidden><span class="dl-label">Email recipients</span><div class="dl-chips"></div><div class="dl-add"><input type="email" id="dlRecipient" placeholder="name@acesoglobal.org"><button type="button" id="dlAddRecipient">＋ Add recipient</button></div><small>Add one email at a time. You can remove any recipient before scheduling.</small></div><div class="dl-timing"><label><span>Delivery timing</span><select id="dlTiming"><option value="now">Send when the deliverable is added</option><option value="schedule">Schedule a specific date and time</option></select></label><label class="dl-when" hidden><span>Send on</span><input type="datetime-local" id="dlWhen"></label></div></div></section><footer><button type="button" class="secondary" id="cancelNewStep">Cancel</button><button class="primary">Add deliverable →</button></footer></form><section class="project-history"><header><div><p class="eyebrow">PROJECT HISTORY</p><h3>Deliverables and evidence</h3></div><label class="evidence-upload">＋ Attach evidence<input id="projectEvidence" type="file" multiple></label></header><div class="history-list">${plan.history.map(item => `<div><time>${escapeHtml(item[0])}</time><span><b>${escapeHtml(item[1])}</b><small>▤ ${escapeHtml(item[2])}</small></span></div>`).join('')}</div></section>`;
-    box.querySelector('#addPlanStep').addEventListener('click', () => box.querySelector('#newStepForm').classList.toggle('show'));
-    box.querySelector('#closeNewStep').onclick = box.querySelector('#cancelNewStep').onclick = () => box.querySelector('#newStepForm').classList.remove('show');
-    box.querySelectorAll('[data-plan-step]').forEach(input => input.addEventListener('change', () => { const index = Number(input.dataset.planStep); if (input.checked) { input.checked = false; openEvidenceDialog(plan, index); } else { plan.steps[index][2] = false; renderPlans(); renderDeliveryPlan(); } }));
-    box.querySelectorAll('[data-remove-step]').forEach(button => button.addEventListener('click', () => { plan.steps.splice(Number(button.dataset.removeStep), 1); renderPlans(); renderDeliveryPlan(); }));
-    bindDeliverableForm(box, plan);
-    box.querySelector('#projectEvidence').addEventListener('change', event => { [...event.target.files].forEach(file => plan.history.unshift(['Today', 'Evidence attached', file.name])); renderDeliveryPlan(); });
-  }
-
-  // People on a proposal (named owners of its deliverables, not team labels).
-  function members(plan) {
-    const names = plan.steps.flatMap(step => String(step[3] || '').split(' · ')).map(x => x.trim());
-    return [...new Set(names)].filter(n => n && !/team|finance|operations/i.test(n));
-  }
-
-  function bindDeliverableForm(box, plan) {
-    const form = box.querySelector('#newStepForm'); if (!form) return;
-    const recipients = [];
-    const $ = sel => form.querySelector(sel);
-    const chips = () => { $('.dl-chips').innerHTML = recipients.map((r, i) => `<span>${escapeHtml(r)}<button type="button" data-rm="${i}" aria-label="Remove ${escapeHtml(r)}">×</button></span>`).join(''); form.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { recipients.splice(Number(b.dataset.rm), 1); chips(); }); };
-    const who = () => form.querySelector('input[name="dlWho"]:checked').value;
-    const sync = () => {
-      $('.dl-email-body').hidden = !$('#dlEmail').checked;
-      $('.dl-recipients').hidden = who() !== 'specific';
-      $('.dl-when').hidden = $('#dlTiming').value !== 'schedule';
+  // ---- Dashboard / Copilot numbers ------------------------------------------
+  window.pipelineStats = function pipelineStats() {
+    const lists = STAGES.map(s => stageItems(s));
+    const all = lists.flat();
+    return {
+      stages: STAGES, counts: lists.map(l => l.length), loaded, fmtValue,
+      totalValue: all.reduce((a, i) => a + parseMoney(i.opp.value), 0),
+      items: all.map(i => ({ stage: i.stage, title: i.opp.title, funder: i.opp.org, country: i.opp.country, owner: i.owner || 'Unassigned', progressPct: progress(i), nextAction: nextAction(i).label, date: nextAction(i).text, fit: fitOf(i.opp.score || 0), value: i.opp.value || 'Not disclosed' }))
     };
-    $('#dlEmail').onchange = sync; $('#dlTiming').onchange = sync;
-    form.querySelectorAll('input[name="dlWho"]').forEach(r => r.onchange = sync);
-    const addRecipient = () => {
-      const v = $('#dlRecipient').value.trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { if (typeof toast === 'function') toast('Enter a valid email address.'); return; }
-      if (!recipients.includes(v)) recipients.push(v);
-      $('#dlRecipient').value = ''; chips();
-    };
-    $('#dlAddRecipient').onclick = addRecipient;
-    $('#dlRecipient').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); addRecipient(); } };
-    form.addEventListener('submit', event => {
-      event.preventDefault();
-      const email = $('#dlEmail').checked, timing = $('#dlTiming').value, when = $('#dlWhen').value;
-      if (email && who() === 'specific' && !recipients.length) { if (typeof toast === 'function') toast('Add at least one recipient, or choose all proposal members.'); return; }
-      if (email && timing === 'schedule' && !when) { if (typeof toast === 'function') toast('Choose when the email should be sent.'); return; }
-      const name = $('#newStepName').value.trim(), owner = $('#newStepOwner').value.trim();
-      const date = new Date($('#newStepDate').value + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-      const file = $('#newStepFile').files[0], link = $('#newStepLink').value.trim();
-      plan.steps.push([name, date, false, owner]);
-      plan.history.unshift(['Today', `Deliverable added · ${name}`, `${owner} · due ${date}`]);
-      addHistoryEvidence(plan, `Evidence added · ${name}`, file?.name || link);
-      if (email) {
-        const to = who() === 'all' ? `All proposal members (${members(plan).length})` : recipients.join(', ');
-        const at = timing === 'schedule' ? new Date(when).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'on creation';
-        plan.history.unshift(['Today', `Email notification ${timing === 'schedule' ? 'scheduled' : 'queued'} · ${name}`, `To ${to} · ${at}`]);
-      }
-      renderPlans(); renderDeliveryPlan();
-      if (typeof toast === 'function') toast(email ? 'Deliverable added. The notification is recorded; email sending is not connected yet.' : 'Deliverable added to the delivery plan.');
-    });
-    sync();
-  }
+  };
 
-  // ---- Side panels: same layout as the opportunity summary drawer ----
-  const STAGE_LABEL = { Qualified: 'Qualified', 'Internal review': 'Internal review', Proposal: 'Proposal in production', Submitted: 'Submitted' };
-  const stageOf = item => STAGES.find(st => stageData[st].includes(item)) || activeStage;
-  function summaryHTML(item, extra = '') {
-    const stage = stageOf(item);
-    return `<div class="reference-drawer pipeline-drawer"><p class="eyebrow">${escapeHtml(STAGE_LABEL[stage])} · ${escapeHtml(item.funder)}</p>
-      <div class="drawer-heading"><div><h2>${escapeHtml(item.title)}</h2><p>${escapeHtml(item.country)} · ${escapeHtml(item.focus)}</p></div><span class="drawer-fit"><b>${item.score}%</b><small>FIT</small></span></div>
-      <div class="recommendation-line"><b>● &nbsp; ${escapeHtml(item.next)}</b><span>Next action · ${escapeHtml(item.date)}</span></div>
-      <section><h3>Project summary</h3><p>${escapeHtml(item.summary)}.</p></section>
-      <div class="reference-facts"><div><i>◉</i><span><small>Value</small><b>${fmtValue(item.value)}</b></span></div><div><i>▣</i><span><small>Next action due</small><b>${escapeHtml(item.date)}</b></span></div><div><i>▤</i><span><small>Owner</small><b>${escapeHtml(item.owner)}</b></span></div><div><i>▥</i><span><small>Focus area</small><b>${escapeHtml(item.focus)}</b></span></div></div>
-      <section class="pl-drawer-progress"><h3>Progress</h3><div><i><u style="width:${item.progress}%"></u></i><b>${item.progress}%</b></div></section>
-      ${extra}
-      <p class="pl-example">Example pipeline data — illustrative until approvals are tracked in the app.</p>
-      <div class="drawer-actions"><button class="primary" id="pipelineOpenFull">Open full opportunity record →</button></div></div>`;
-  }
-  function showDrawer(item, html) {
-    const drawerContent = document.querySelector('#drawerContent'); if (!drawerContent) return;
-    drawerContent.innerHTML = html;
-    document.querySelector('#drawerScrim')?.classList.add('show'); document.querySelector('#quickDrawer')?.classList.add('show'); document.querySelector('#quickDrawer')?.setAttribute('aria-hidden', 'false');
-    document.querySelector('#quickDrawer').scrollTop = 0;
-    document.querySelector('#pipelineOpenFull').addEventListener('click', () => { if (typeof window.openDetail === 'function') window.openDetail({ type: 'RFP', org: item.funder, country: item.country, title: item.title, score: item.score, value: fmtValue(item.value), due: item.date, pillar: item.focus, state: 'In pipeline', source: 'Pipeline example', meta: { objective: item.summary } }); });
-  }
-  // Proposal: the summary for context, then the editable delivery plan.
-  function openProposal(index) {
-    activePlan = index;
-    const plan = plans[index];
-    const item = stageData.Proposal.find(x => x.title === plan.title) || { score: 0, title: plan.title, summary: 'Proposal in production', funder: plan.funder, country: plan.country, focus: '', owner: '', progress: planPercent(plan), next: '', date: plan.due, value: 0 };
-    showDrawer(item, summaryHTML(item, '<section class="delivery-plan-card in-drawer" id="deliveryPlan"></section>'));
-    renderDeliveryPlan();
-  }
-
-  function openPipelineOpportunity(item) {
-    if (stageOf(item) === 'Proposal') { const i = plans.findIndex(pl => pl.title === item.title); if (i >= 0) return openProposal(i); }
-    return showDrawer(item, summaryHTML(item));
-  }
-  window.renderPipeline = renderStage;
-
-  // The Today screen's stage strip mirrors the pipeline stages and numbers.
-  // Clicking a stage opens a quick view of its work right on Today; picking
-  // an item opens it in the pipeline.
+  // ---- Today: stage strip + quick view ---------------------------------------
   const QUICK_TITLE = { Qualified: 'Qualified work', 'Internal review': 'Awaiting internal review', Proposal: 'Proposal work', Submitted: 'Submitted, awaiting response' };
   let quickStage = null;
   function quickHTML(stage) {
-    const items = stageData[stage].map(item => {
-      const plan = plans.find(pl => pl.title === item.title);
-      const badge = stage === 'Proposal' && plan ? `${planPercent(plan)}%` : `${item.score}%`;
-      const right = stage === 'Proposal' && plan ? `Due ${plan.due}` : `${item.next} · ${item.date}`;
-      return `<button type="button" data-quick="${escapeHtml(item.title)}"><span class="sq-badge">${badge}</span><span class="sq-main"><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.funder)} · ${escapeHtml(item.country)}</small></span><span class="sq-right">${escapeHtml(right)}</span><em>›</em></button>`;
+    const items = stageItems(stage).map(i => {
+      const badge = stage === 'Proposal' ? `${progress(i)}%` : i.opp.score == null ? '—' : `${i.opp.score}%`;
+      return `<button type="button" data-quick="${esc(i.key)}"><span class="sq-badge">${badge}</span><span class="sq-main"><b>${esc(i.opp.title)}</b><small>${esc(i.opp.org || '')} · ${esc(i.opp.country || '')}</small></span><span class="sq-right">${esc(nextAction(i).text)}</span><em>›</em></button>`;
     }).join('');
-    return `<header><div><p class="eyebrow">QUICK VIEW</p><h3>${QUICK_TITLE[stage]}</h3></div><button type="button" class="sq-close" aria-label="Close quick view">×</button></header><div class="sq-grid">${items}</div><footer>Select an opportunity to open it in the ${STAGE_LABEL[stage].toLowerCase()} stage.</footer>`;
+    return `<header><div><p class="eyebrow">QUICK VIEW</p><h3>${QUICK_TITLE[stage]}</h3></div><button type="button" class="sq-close" aria-label="Close quick view">×</button></header>${items ? `<div class="sq-grid">${items}</div><footer>Select an opportunity to open it in the ${STAGE_LABEL[stage].toLowerCase()} stage.</footer>` : `<p class="pl-empty">${esc(EMPTY[stage])}</p>`}`;
   }
   function renderTodayStrip() {
-    const strip = document.querySelector('#todayView .stage-strip'); if (!strip) return;
-    const cards = [
-      ['Qualified', 'Qualified', `${fmtValue(stageData.Qualified.reduce((a, x) => a + x.value, 0))} potential`],
-      ['Internal review', 'Internal review', `${stageData['Internal review'].length} need decision`],
-      ['Proposal', 'Proposals in progress', `${avg(stageData.Proposal)}% avg. completion`],
-      ['Submitted', 'Submitted', `${stageData.Submitted.filter(x => x.next === 'Funder response').length} response due`]
-    ];
-    strip.innerHTML = cards.map(([stage, label, copy]) => `<button data-stage="${stage}" class="${quickStage === stage ? 'active' : ''}" aria-expanded="${quickStage === stage}"><span>${stageData[stage].length}</span><div><b>${label}</b><small>${copy}</small></div><em>→</em></button>`).join('');
-    let panel = document.querySelector('#stageQuick');
+    const strip = $('#todayView .stage-strip'); if (!strip) return;
+    const copy = { Qualified: stageCopy('Qualified'), 'Internal review': `${stageItems('Internal review').length} need decision`, Proposal: stageItems('Proposal').length ? `${Math.round(stageItems('Proposal').reduce((a, i) => a + progress(i), 0) / stageItems('Proposal').length)}% avg. completion` : 'No proposals yet', Submitted: `${stageItems('Submitted').length} awaiting response` };
+    const label = { Qualified: 'Qualified', 'Internal review': 'Internal review', Proposal: 'Proposals in progress', Submitted: 'Submitted' };
+    strip.innerHTML = STAGES.map(s => `<button data-stage="${s}" class="${quickStage === s ? 'active' : ''}" aria-expanded="${quickStage === s}"><span>${s === 'Qualified' || loaded ? stageItems(s).length : '…'}</span><div><b>${label[s]}</b><small>${s === 'Qualified' || loaded ? copy[s] : 'Loading…'}</small></div><em>→</em></button>`).join('');
+    let panel = $('#stageQuick');
     if (!panel) { panel = document.createElement('section'); panel.id = 'stageQuick'; panel.className = 'stage-quick'; strip.after(panel); }
     panel.hidden = !quickStage;
     panel.innerHTML = quickStage ? quickHTML(quickStage) : '';
-    strip.querySelectorAll('[data-stage]').forEach(b => b.onclick = () => { quickStage = quickStage === b.dataset.stage ? null : b.dataset.stage; renderTodayStrip(); });
+    $$('[data-stage]', strip).forEach(b => b.onclick = () => { quickStage = quickStage === b.dataset.stage ? null : b.dataset.stage; renderTodayStrip(); });
     if (!quickStage) return;
-    panel.querySelector('.sq-close').onclick = () => { quickStage = null; renderTodayStrip(); };
-    panel.querySelectorAll('[data-quick]').forEach(b => b.onclick = () => {
-      const stage = quickStage, item = stageData[stage].find(x => x.title === b.dataset.quick);
-      window.showView('pipeline'); range = 'all'; renderStage(stage); renderPlans();
+    $('.sq-close', panel).onclick = () => { quickStage = null; renderTodayStrip(); };
+    $$('[data-quick]', panel).forEach(b => b.onclick = () => {
+      const item = itemByKey(b.dataset.quick); if (!item) return;
+      window.showView('pipeline'); range = 'all'; renderStage(item.stage);
       setTimeout(() => openPipelineOpportunity(item));
     });
   }
+
+  function rerender() { renderStage(); renderTodayStrip(); }
+  window.renderPipeline = rerender;
   renderTodayStrip();
-  document.addEventListener('DOMContentLoaded', () => { renderStage(); renderPlans(); renderDeliveryPlan(); });
+  document.addEventListener('DOMContentLoaded', () => { renderStage(); loadStore(); });
+  document.addEventListener('aceso:live-search-complete', rerender);
 })();

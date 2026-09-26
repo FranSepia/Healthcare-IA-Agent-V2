@@ -1301,47 +1301,10 @@ body,button,input,textarea{font-family:var(--sans)}
 #pipelineView .pl-period-custom label{display:flex;flex-direction:column;gap:3px;font-weight:600;color:#7a8fa4}
 #pipelineView .pl-period-custom input{border:1px solid #cfdeea;border-radius:8px;padding:7px 9px;color:#0a2f57}
 #pipelineView .pl-period-custom button{border:0;background:#0b4d7f;color:#fff;border-radius:8px;padding:9px 16px;font-weight:600;cursor:pointer}
-.pl-empty{margin:0;padding:26px 20px;color:#6d8399;text-align:center}
-
-/* Proposal mode: only "Proposal production", full width */
-#pipelineView.proposal-mode .pipeline-stage-card{display:none!important}
-#pipelineView.proposal-mode .pipeline-workspace{display:block!important;margin-top:16px}
-#pipelineView .pipeline-workspace .workspace-card{width:100%}
-#pipelineView .workspace-card .text-link:empty{display:none}
-#pipelineView #proposalPlans .proposal-summary{display:grid!important;grid-template-columns:40px minmax(0,1.3fr) minmax(0,1fr) 52px minmax(90px,160px) 96px 18px!important;gap:16px;align-items:center;width:100%;padding:16px 22px;border:0;border-top:1px solid #e3ebf2;background:#fff;text-align:left;cursor:pointer}
-#pipelineView #proposalPlans .proposal-summary:hover{background:#f5f9fc}
-#pipelineView #proposalPlans .proposal-summary>span b{display:block;color:#0a315c}
-#pipelineView #proposalPlans .proposal-summary>span small{display:block;color:#6d8399}
-#pipelineView #proposalPlans .ps-next small{text-transform:uppercase;letter-spacing:.05em}
-#pipelineView #proposalPlans .proposal-summary>i{display:block;height:8px;border-radius:4px;background:#e8eef4;overflow:hidden}
-#pipelineView #proposalPlans .proposal-summary>i u{display:block;height:100%;background:#26a978;border-radius:4px}
-#pipelineView #proposalPlans .proposal-summary>strong{color:#0a315c;text-align:right}
-#pipelineView #proposalPlans .proposal-summary>small{color:#6d8399;line-height:1.3}
-#pipelineView #proposalPlans .proposal-summary>em{font-style:normal;color:#8ea3b6}
-@media(max-width:900px){#pipelineView #proposalPlans .proposal-summary{grid-template-columns:36px minmax(0,1fr) 52px 18px!important}#pipelineView #proposalPlans .ps-next,#pipelineView #proposalPlans .proposal-summary>i,#pipelineView #proposalPlans .proposal-summary>small{display:none}}
-
-/* Side panel extras (layout itself comes from .reference-drawer) */
-.pipeline-drawer .pl-drawer-progress>div{display:grid;grid-template-columns:1fr 48px;gap:12px;align-items:center}
-.pipeline-drawer .pl-drawer-progress i{display:block;height:8px;border-radius:4px;background:#e8eef4;overflow:hidden}
-.pipeline-drawer .pl-drawer-progress u{display:block;height:100%;border-radius:4px;background:#1594d4}
-.pipeline-drawer .pl-drawer-progress b{text-align:right;color:#0a315c}
-.pipeline-drawer .pl-example{margin:14px 0 0;color:#8a6100}
-
-/* Delivery plan inside the panel: one column, same card language */
-.quick-drawer .delivery-plan-card.in-drawer{margin:18px 0 0;padding:0;border:1px solid #dde7ef;border-radius:14px;background:#fff;box-shadow:none;overflow:hidden}
-.quick-drawer .in-drawer .delivery-head{padding:16px 18px 6px}
-.quick-drawer .in-drawer .delivery-head h2{display:none}
-.quick-drawer .in-drawer .delivery-head p:not(.eyebrow){margin:4px 0 0;color:#6d8399}
-.quick-drawer .in-drawer .delivery-progress{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 18px;border-top:1px solid #edf2f6;border-bottom:1px solid #edf2f6;background:#f8fbfd}
-.quick-drawer .in-drawer .delivery-progress>small{grid-column:1/3}
-.quick-drawer .in-drawer .delivery-progress>button{grid-column:3;grid-row:1/3}
-.quick-drawer .in-drawer .delivery-columns{display:grid!important;grid-template-columns:1fr!important;gap:12px;padding:14px 18px}
-.quick-drawer .in-drawer .project-history{margin:0 18px 18px}
+.pl-empty{margin:0;padding:26px 20px;color:#6d8399;text-align:center;line-height:1.5}
 
 /* New deliverable form */
-#newStepForm{display:none;margin:0 18px 16px;padding:16px;border:1px solid #d6e4ef;border-radius:14px;background:#f8fbfe}
-#newStepForm.show{display:block}
-#newStepForm>header{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px}
+#newStepForm>header{display:flex;justify-content:space-between;gap:12px}
 #newStepForm>header h3{margin:2px 0}
 #newStepForm>header p:not(.eyebrow){margin:2px 0 0;color:#6d8399}
 #newStepForm>header>button{border:0;background:none;color:#8ea3b6;font-size:20px;cursor:pointer;align-self:flex-start}
@@ -1378,7 +1341,7 @@ body,button,input,textarea{font-family:var(--sans)}
 #newStepForm .dl-add button{border:1px solid #1580c6;background:#fff;color:#0b5f9c;border-radius:9px;padding:0 14px;font-weight:600;cursor:pointer}
 #newStepForm .dl-recipients>small{display:block;margin-top:6px;color:#8ea3b6}
 #newStepForm .dl-timing{display:grid;grid-template-columns:1fr;gap:10px}
-#newStepForm>footer{display:grid;grid-template-columns:auto 1fr;gap:10px;margin-top:16px}
+#newStepForm>footer{display:grid;grid-template-columns:auto 1fr;gap:10px}
 #newStepForm>footer button{border:0;border-radius:10px;padding:12px 18px;font-weight:600;cursor:pointer}
 #newStepForm>footer .secondary{background:#fff;border:1px solid #cfdde9;color:#34506b}
 #newStepForm>footer .primary{background:#1580c6;color:#fff}
@@ -1487,3 +1450,98 @@ body,button,input,textarea{font-family:var(--sans)}
 /* Record hero: "Request clarification" under "Approve to pursue". */
 .record-hero-decision>button.hero-secondary{margin-top:10px!important;background:transparent!important;color:#fff!important;border:1px solid rgba(255,255,255,.6)!important;font-weight:600!important}
 .record-hero-decision>button.hero-secondary:hover{background:rgba(255,255,255,.1)!important}
+
+/* Pipeline proposal workspace: select above, work below. */
+.proposal-mode .pipeline-workspace{display:block!important}
+.proposal-mode .pipeline-workspace>.workspace-card{display:none!important}
+.proposal-mode .delivery-plan-card{width:100%;scroll-margin-top:145px;overflow:hidden!important}
+.pipeline-data-row.selected-proposal{background:#f1f8fd!important;box-shadow:inset 4px 0 #1688ce}
+.pipeline-data-row.selected-proposal>em{color:#0d72b5}
+.proposal-workspace-head{display:flex;justify-content:space-between;align-items:center;padding:18px 28px 16px;border-bottom:1px solid #dce7f1}
+.proposal-workspace-head h2{margin:3px 0;font:28px/1.1 var(--serif);color:#123a65}
+.proposal-workspace-head>div>p:last-child{margin:0;color:#7189a4;font-size:13px}
+.proposal-workspace-head>span{white-space:nowrap;background:#edf8f4;color:#20775e;border-radius:18px;padding:7px 12px;font-size:11px}
+.proposal-workspace-summary{display:grid;grid-template-columns:1.45fr 1fr .8fr 1fr;background:#f4f9fc;border-bottom:1px solid #dce7f1}
+.proposal-workspace-summary>div{min-height:76px;padding:13px 20px;border-right:1px solid #dce7f1}
+.proposal-workspace-summary>div:last-child{border-right:0}.proposal-workspace-summary small{display:block;color:#7890aa;font-size:10px;text-transform:uppercase;letter-spacing:.07em}.proposal-workspace-summary b{display:block;margin-top:5px;color:#173b66;font-size:14px}
+.proposal-workspace-summary>div:first-child{display:grid;grid-template-columns:58px 1fr;gap:4px 11px;align-items:center}.proposal-workspace-summary>div:first-child small{grid-column:1/-1}.proposal-workspace-summary>div:first-child b{grid-row:2/4;font:27px var(--serif);margin:0}.proposal-workspace-summary i{display:block;height:7px;background:#dceaf2;border-radius:99px;overflow:hidden}.proposal-workspace-summary i u{display:block;height:100%;background:linear-gradient(90deg,#178bd0,#2bb18b);border-radius:inherit}.proposal-workspace-summary em{font-style:normal;font-size:10px;color:#7189a4}
+.proposal-attention{display:grid;grid-template-columns:188px minmax(0,1fr);align-items:stretch;margin:18px 28px 0;border:1px solid #e6dcc7;border-radius:11px;background:#fffdf8;overflow:hidden}
+.proposal-attention>header{display:flex;align-items:center;padding:14px 18px;border-right:1px solid #eadfca;background:#fff8e9}.proposal-attention>header .eyebrow{margin:0;line-height:1.45}.proposal-attention>div{display:grid;grid-template-columns:1.15fr 1fr 1fr}.proposal-attention article{min-width:0;padding:13px 18px;border-right:1px solid #eee5d5}.proposal-attention article:last-child{border-right:0}.proposal-attention small,.proposal-attention b,.proposal-attention em{display:block}.proposal-attention small{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#8d7c5b}.proposal-attention b{margin-top:5px;color:#17385e;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.proposal-attention em{margin-top:3px;color:#b76b24;font-size:10px;font-style:normal}
+.proposal-workspace-body{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(245px,.55fr);gap:18px;padding:18px 28px 22px}.proposal-delivery-sequence,.proposal-workspace-body>aside>section{border:1px solid #dce7f1;border-radius:13px;background:#fff}.proposal-delivery-sequence>header{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;border-bottom:1px solid #e4edf3}.proposal-delivery-sequence h3{margin:3px 0 0;font:23px var(--serif);color:#143b65}.proposal-delivery-sequence>header p:not(.eyebrow){margin:3px 0 0;color:#7189a4;font-size:11px}.proposal-delivery-sequence>header button{border:0;background:#0878c7;color:#fff;border-radius:8px;padding:9px 12px;font-size:11px;font-weight:700}
+.proposal-mode .delivery-sequence{position:relative;padding:4px 22px 14px 54px}.proposal-mode .delivery-sequence:before{content:"";position:absolute;top:20px;bottom:28px;left:34px;width:1px;background:#cddde8}.proposal-mode .delivery-sequence .delivery-step{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 105px 28px!important;gap:18px!important;margin:0!important;padding:16px 0 16px 10px!important;border:0!important;border-bottom:1px solid #e1eaf0!important;border-radius:0!important;background:transparent!important}.proposal-mode .delivery-sequence .delivery-step:last-child{border-bottom:0!important}.proposal-mode .delivery-sequence .delivery-step>input{position:absolute;left:-40px;top:18px;width:21px;height:21px;margin:0;z-index:1;accent-color:#179a73;background:#fff}.proposal-mode .delivery-sequence .delivery-step.complete:after{content:"";position:absolute;left:-35px;top:23px;width:11px;height:11px;border-radius:50%;background:#179a73;box-shadow:0 0 0 5px #edf8f4}.proposal-mode .delivery-sequence .delivery-step>span b{font-size:14px}.proposal-mode .delivery-sequence .delivery-step>span em{font-size:11px;margin-top:4px}.proposal-mode .delivery-sequence .step-due{justify-self:end}.proposal-mode .delivery-sequence .delivery-step>button{align-self:center}
+.proposal-workspace-body>aside{display:flex;flex-direction:column;gap:12px}.proposal-workspace-body>aside>section{padding:15px 16px}.proposal-workspace-body>aside h3{margin:0 0 13px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#193e65}.workspace-team,.workspace-files{display:grid;gap:10px}.workspace-team>span{display:grid;grid-template-columns:32px 1fr;gap:9px;align-items:center}.workspace-team i{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#3187c5;color:#fff;font-size:9px;font-style:normal;font-weight:700}.workspace-team b{font-size:11px}.workspace-files>span{display:grid;grid-template-columns:30px 1fr;gap:1px 8px;align-items:center;padding-bottom:9px;border-bottom:1px solid #e7eef4}.workspace-files>span:last-child{border-bottom:0;padding-bottom:0}.workspace-files i{grid-row:1/3;width:30px;height:30px;border-radius:7px;display:grid;place-items:center;background:#edf5fb;color:#2086c4;font-style:normal}.workspace-files b{font-size:10px}.workspace-files small{font-size:9px;color:#7990aa}
+.proposal-mode .project-history{margin-top:0}
+@media(max-width:1000px){.proposal-workspace-body{grid-template-columns:1fr}.proposal-workspace-body>aside{display:grid;grid-template-columns:1fr 1fr}.proposal-attention{grid-template-columns:1fr}.proposal-attention>header{border-right:0;border-bottom:1px solid #eadfca}}
+@media(max-width:700px){.proposal-workspace-head{display:block;padding:17px 18px}.proposal-workspace-head>span{display:inline-block;margin-top:10px}.proposal-workspace-summary{grid-template-columns:1fr 1fr}.proposal-workspace-summary>div:nth-child(2){border-right:0}.proposal-attention{margin:14px 16px 0}.proposal-attention>div{grid-template-columns:1fr}.proposal-attention article{border-right:0;border-bottom:1px solid #eee5d5}.proposal-attention article:last-child{border-bottom:0}.proposal-workspace-body{padding:14px 16px 18px}.proposal-workspace-body>aside{display:flex}}
+
+/* Add/edit deliverable drawer — keep the plan visible in context. */
+body.deliverable-drawer-open{overflow:hidden}
+body.deliverable-drawer-open::before{content:"";position:fixed;inset:0;z-index:1090;background:rgba(5,25,45,.58);backdrop-filter:blur(2px);animation:drawerFade .18s ease both}
+.proposal-mode .new-step-form.deliverable-form{position:fixed!important;z-index:1100;top:0;right:0;bottom:0;width:min(470px,calc(100vw - 24px));height:100vh;margin:0!important;border:0!important;border-radius:0!important;overflow-y:auto;background:#fff!important;box-shadow:-24px 0 70px rgba(4,27,49,.28)!important;transform:translateX(105%);transition:transform .24s ease;display:block!important;visibility:hidden;pointer-events:none}
+.proposal-mode .new-step-form.deliverable-form.show{visibility:visible;pointer-events:auto;transform:translateX(0)}
+.proposal-mode .deliverable-form>header{position:sticky;top:0;z-index:2;padding:25px 26px 20px;background:linear-gradient(120deg,#eaf6ff,#f8fbff);box-shadow:0 1px 0 #d8e6f0}
+.proposal-mode .deliverable-form>header h3{font-size:25px}
+.proposal-mode .deliverable-form>header>button{width:34px;height:34px;border-radius:50%!important;background:#fff!important;box-shadow:0 3px 10px rgba(24,62,91,.1);font-size:22px!important}
+.proposal-mode .deliverable-form>footer{position:fixed;z-index:3;right:0;bottom:0;width:min(470px,calc(100vw - 24px));box-sizing:border-box;padding:15px 26px;background:rgba(255,255,255,.96);border-top:1px solid #dce7ef;box-shadow:0 -10px 30px rgba(18,52,78,.08);backdrop-filter:blur(8px)}
+.proposal-mode .deliverable-form>footer .primary{min-width:160px}
+@keyframes drawerFade{from{opacity:0}to{opacity:1}}
+@media(max-width:540px){.proposal-mode .new-step-form.deliverable-form,.proposal-mode .deliverable-form>footer{width:100vw}.proposal-mode .deliverable-form>header,#newStepForm .dl-body{padding-left:18px;padding-right:18px}}
+/* Proposal collaboration lives here; evidence stays with each deliverable. */
+.workspace-comments-panel>header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.workspace-comments-panel>header h3{margin:0!important}.workspace-comments-panel>header>span{min-width:22px;height:22px;padding:0 6px;box-sizing:border-box;border-radius:999px;display:grid;place-items:center;background:#eaf5fc;color:#1478b8;font-size:10px;font-weight:800}
+.workspace-comments{display:grid;gap:12px}.workspace-comments article{display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;padding-bottom:12px;border-bottom:1px solid #e7eef4}.workspace-comments article:last-child{padding-bottom:0;border-bottom:0}.workspace-comments article>i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#e8f4fb;color:#176ea6;font-size:9px;font-style:normal;font-weight:800}.workspace-comments b{display:block;color:#183d63;font-size:10px}.workspace-comments p{margin:3px 0 4px;color:#506b84;font-size:10px;line-height:1.45}.workspace-comments small{color:#8a9caf;font-size:8px}
+.workspace-comment-form{display:grid;grid-template-columns:minmax(0,1fr) 30px;gap:7px;margin-top:13px;padding-top:12px;border-top:1px solid #e7eef4}.workspace-comment-form input{min-width:0;border:1px solid #cedee9;border-radius:8px;padding:8px 9px;color:#173b60;font:10px var(--sans);background:#f9fbfd}.workspace-comment-form input:focus{outline:2px solid #b8def5;outline-offset:1px}.workspace-comment-form button{width:30px;height:30px;border:0;border-radius:8px;background:#0d7dc7;color:#fff;font-size:15px;font-weight:800;cursor:pointer}
+
+/* ======================================================================
+   Pipeline & Proposals v51 (Yael) on real data — adjustments so it follows
+   the app's system: one column, 15px cards with #dce7f1 borders, 16px
+   rhythm, 20px inner padding, DM Sans at the three sizes (type-scale.css).
+   ====================================================================== */
+#pipelineView .approved-pipeline-hero{margin-left:0!important;margin-right:0!important;border:1px solid #dce7f1!important;border-radius:15px!important;overflow:hidden}
+#pipelineView .pl-period,#pipelineView>.pipeline-metrics,#pipelineView .pipeline-stage-card,#pipelineView .delivery-plan-card{border-radius:15px!important}
+#pipelineView .pl-period{margin:16px 0}
+#pipelineView>.pipeline-metrics{margin-top:0}
+#pipelineView .pipeline-stage-card{margin-top:16px}
+#pipelineView .delivery-plan-card{margin-top:16px;border:1px solid #dce7f1!important;box-shadow:0 1px 2px rgba(16,45,82,.04),0 6px 18px rgba(16,45,82,.035)!important;background:#fff}
+#pipelineView .delivery-plan-card[hidden]{display:none!important}
+#pipelineView .proposal-workspace-head{padding:18px 20px 16px}
+#pipelineView .proposal-attention{margin:16px 20px 0}
+#pipelineView .proposal-workspace-body{padding:16px 20px 20px;gap:16px}
+#pipelineView .proposal-delivery-sequence,#pipelineView .proposal-workspace-body>aside>section{border-radius:12px}
+#pipelineView .proposal-delivery-sequence>header button{font-weight:600}
+#pipelineView .project-history{margin:0 20px 20px!important;border:1px solid #dce7f1;border-radius:12px;padding:16px 18px;background:#fff}
+#pipelineView .project-history>header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+#pipelineView .pl-caption{margin:10px 0 0;color:#8ea3b6}
+.pw-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.pw-head-actions>span{white-space:nowrap;background:#edf8f4;color:#20775e;border-radius:18px;padding:7px 12px}
+.pw-submit{border:1px solid #1580c6;background:#fff;color:#0b5f9c;border-radius:9px;padding:8px 14px;font-weight:600;cursor:pointer}
+.pw-submit:hover{background:#f3f9fe}
+.proposal-workspace-summary select,.pl-owner select{width:100%;margin-top:5px;border:1px solid #cfdeea;border-radius:8px;padding:7px 9px;background:#fff;color:#0a2f57;font-weight:600}
+.pipeline-owner.unassigned i{background:#eef3f8!important;color:#8ea3b6!important;border:1px dashed #c4d6e5}
+.pipeline-owner.unassigned b{color:#8ea3b6!important}
+.workspace-team b small{display:block;color:#8ea3b6;font-weight:400}
+.wc-empty{color:#8ea3b6}
+.workspace-comment-form.needs-name{grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr) 30px!important}
+/* Side panel: owner and stage actions */
+.pipeline-drawer .pl-owner{display:grid;gap:4px;margin-top:18px;font-weight:600;color:#23455d}
+.pipeline-drawer .pl-stage-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid #e6eef5}
+.pipeline-drawer .pl-stage-actions button{border-radius:10px;padding:11px 18px;font-weight:600;cursor:pointer}
+.pipeline-drawer .pl-stage-actions .primary{border:0;background:#0b4d7f;color:#fff}
+.pipeline-drawer .pl-stage-actions .secondary{border:1px solid #cfdde9;background:#fff;color:#34506b}
+.pipeline-drawer .pl-stage-actions .link{border:0;background:none;color:#a14b3b;padding:11px 6px}
+.pipeline-drawer .drawer-actions{display:flex;gap:10px;flex-wrap:wrap}
+.pipeline-drawer .drawer-actions a.secondary{display:inline-flex;align-items:center;border:1px solid #cfdde9;border-radius:10px;padding:11px 16px;color:#34506b;text-decoration:none;font-weight:600}
+/* Deliverable drawer body (fields keep the round-2 layout) */
+#newStepForm .dl-body{padding:20px 26px 96px}
+#newStepForm .dl-fields{grid-template-columns:1fr}
+#newStepForm .dl-fields label:first-child{grid-column:auto}
+@media(max-width:700px){#pipelineView .proposal-workspace-head{display:block}#pipelineView .pw-head-actions{justify-content:flex-start;margin-top:10px}#pipelineView .proposal-attention{margin:14px 16px 0}#pipelineView .proposal-workspace-body{padding:14px 16px 18px}#pipelineView .project-history{margin:0 16px 16px!important}}
+
+/* Criteria (7 pages, v51) and Pipeline share the home screen's column. */
+#pipelineView{max-width:1460px!important}
+#criteriaView{padding-left:0!important;padding-right:0!important}
+#criteriaView>.notebook-head,#criteriaView>.criteria-notebook,#criteriaView>.notebook-footer{box-sizing:border-box;width:min(1384px,calc(100% - 76px))!important;max-width:none!important;margin-left:auto!important;margin-right:auto!important}
+@media(max-width:760px){#criteriaView>.notebook-head,#criteriaView>.criteria-notebook,#criteriaView>.notebook-footer{width:calc(100% - 36px)!important}}
+#criteriaView .worked-example .we-output{display:flex;align-items:center;gap:8px;margin-top:10px;color:#17385e;font-weight:600}
+#criteriaView .worked-example .we-output i{width:8px;height:8px;border-radius:50%;background:#26a978;flex:none}
+#criteriaView .notebook-footer nav{flex-wrap:wrap;row-gap:8px}
+#criteriaView .geography-language-editor>.language-rules{margin-top:26px;padding-top:22px;border-top:1px solid #e3ebf2}

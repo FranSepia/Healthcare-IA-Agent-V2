@@ -144,7 +144,7 @@
     renderComments();
     const sourceDoc=qs('[data-source-doc]');if(sourceDoc)sourceDoc.onclick=()=>{if(active.sourceUrl)window.open(active.sourceUrl,'_blank','noopener');else showToast('DevelopmentAid listing — membership sign-in required to view the original notice.')};
     qs('#commentForm').onsubmit=e=>{e.preventDefault();const t=e.target.querySelector('textarea');comments.push(['BD','Liz','Just now',t.value.trim()]);t.value='';renderComments();showToast('Comment added to the opportunity record.')};
-    qsa('[data-approve]').forEach(b=>b.onclick=()=>showToast('Opportunity approved to pursue.'));qs('[data-clarify]').onclick=()=>showToast('Clarification request added to the decision history.');
+    qsa('[data-approve]').forEach(b=>b.onclick=()=>{if(typeof window.pipelineApprove==='function')window.pipelineApprove(active);else showToast('Opportunity approved to pursue.')});qs('[data-clarify]').onclick=()=>showToast('Clarification request added to the decision history.');
   }
 
   const criterionSteps=[

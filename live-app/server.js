@@ -16,6 +16,7 @@ const { hasGeminiKey, callGemini } = require('./lib/gemini');
 const { closeBrowser } = require('./lib/browser');
 const { hasFirebaseConfig } = require('./lib/firebase');
 const { saveSearch, listSearches, getSearchById, getLatestSearch } = require('./lib/searchHistory');
+const { store: pipelineStore, listPipeline, savePipelineItem, addPipelineComment, removePipelineItem } = require('./lib/pipeline');
 
 const app = express();
 app.use(cors());
@@ -208,6 +209,43 @@ app.get('/api/search-history/:id', async (req, res) => {
     res.json(record);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Pipeline & Proposals — real opportunities moved past Qualified, with their
+// owner, delivery plan, comments and history (Firestore collection "pipeline").
+const pipelineError = (res, err) => res.status(err.status || 500).json({ error: err.message });
+
+app.get('/api/pipeline', async (req, res) => {
+  try {
+    res.json({ store: pipelineStore(), items: await listPipeline() });
+  } catch (err) {
+    pipelineError(res, err);
+  }
+});
+
+app.put('/api/pipeline/:key', async (req, res) => {
+  try {
+    res.json({ store: pipelineStore(), item: await savePipelineItem(req.params.key, req.body || {}) });
+  } catch (err) {
+    pipelineError(res, err);
+  }
+});
+
+app.post('/api/pipeline/:key/comments', async (req, res) => {
+  try {
+    res.json({ comment: await addPipelineComment(req.params.key, req.body || {}) });
+  } catch (err) {
+    pipelineError(res, err);
+  }
+});
+
+app.delete('/api/pipeline/:key', async (req, res) => {
+  try {
+    await removePipelineItem(req.params.key);
+    res.json({ ok: true });
+  } catch (err) {
+    pipelineError(res, err);
   }
 });
 

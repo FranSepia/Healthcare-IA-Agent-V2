@@ -206,7 +206,7 @@
   // Each chart = a data function (also read by Aceso Copilot) + an HTML
   // function that draws exactly that data.
 
-  // Pursuit decision quality — reads the example pipeline (no live pipeline yet).
+  // Pursuit decision quality — reads the live pipeline (pipeline-enhancements.js).
   function decisionQualityData() {
     const pipeline = typeof window.pipelineStats === 'function' ? window.pipelineStats() : null;
     if (!pipeline) return null;
@@ -222,8 +222,9 @@
   }
   function decisionQualityCard() {
     const d = decisionQualityData();
-    const card = { title: 'Pursuit decision quality', sub: 'How qualified pursuits progress after human review.', note: 'Example data' };
+    const card = { title: 'Pursuit decision quality', sub: 'How qualified pursuits progress after human review.' };
     if (!d) return { ...card, body: empty('pursuit decision quality') };
+    if (d.steps.every(s => !s.to)) return { ...card, body: '<div class="chart-empty">No opportunity has moved past Qualified yet. This fills in as the team moves opportunities through the pipeline.</div>' };
     const { steps, best } = d;
     return { ...card,
       body: `<div class="dq-headline"><b>${d.toProposal}%</b><span><strong>of qualified pursuits</strong>reach proposal production</span></div>
@@ -422,7 +423,7 @@
         weekly: hoursRows(seriesFor('week')),
         monthly: hoursRows(seriesFor('month'))
       } : null,
-      pursuitDecisionQuality: dq ? { chart: 'Card "Pursuit decision quality"', isExampleData: true, how: 'Conversion between stages of the example pipeline: the share of pursuits that reached a stage and then also reached the next one.', steps: dq.steps, strongestHandoff: dq.best } : null,
+      pursuitDecisionQuality: dq ? { chart: 'Card "Pursuit decision quality"', isExampleData: false, how: 'Conversion between stages of the live pipeline: the share of pursuits that reached a stage and then also reached the next one.', steps: dq.steps, strongestHandoff: dq.best } : null,
       pipelineValueTrend: (d => ({ chart: 'Bars + line "Pipeline value & opportunities trend" (toggle Opportunities / Value ($))', isExampleData: d.isExample, how: 'Relevant opportunities per month by publication date, last 12 months, with the sum of published budgets as the second series. Uses example figures while fewer than six months have notices. The takeaway compares the last six months with the six before.', months: d.months.map(m => ({ month: m.d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), opportunities: m.count, potentialValue: fmtMoney(m.value) })), opportunitiesChangePct: d.countChange, valueChangePct: d.valueChange }))(pipelineTrendData()),
       deadlineReadiness: { chart: 'Donut "Deadline readiness" (% on track)', how: 'Relevant opportunities with a parseable deadline in the next 90 days. At risk = due within 7 days; Needs attention = 8-21 days left, or the notice has an incomplete TOR/RFP or limited information; Ready = more than 3 weeks left and a complete notice. "On track" = ready ÷ all dated in the next 90 days.', onTrackPct: rd.pct, counts: rd.counts, noPublishedDeadline: rd.undated, items: rd.items },
       opportunityConversionFunnel: { chart: 'Funnel "Opportunity conversion funnel"', how: 'Screened = every notice found; Passed rules = not excluded by the knockout rules; then fit score ≥ 65 and ≥ 85.', stages: funnelData(opps, excluded) },

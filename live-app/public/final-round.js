@@ -116,28 +116,32 @@
   }
 
   function leftFocus(){
-    return `<div class="focus-groups">${group('focusAreas','Focus areas','phrase','Add focus area')}${group('activities','Activities Aceso delivers','phrase','Add activity')}${group('keywords','Priority keywords','keyword','Add keyword')}</div>`;
+    return `<div class="focus-groups">${group('focusAreas','Focus areas','phrase','Add focus area')}${group('keywords','Priority keywords','keyword','Add keyword')}</div>`;
+  }
+  function leftActivities(){
+    return `<div class="activity-editor">${group('activities','Activities Aceso delivers','phrase','Add activity')}</div>`;
   }
 
+  const prefRow=(icon,value,key,i,title)=>`<article><i>⋮</i><span>${icon}</span><input value="${esc(value)}" data-rename-idx="${key}:${i}" aria-label="Edit ${esc(value)}"${title?` title="${esc(title)}"`:''}><button type="button" data-remove="${i}" data-key="${key}" aria-label="Remove ${esc(value)}">×</button></article>`;
+  const langRow=(label,attr,on,removable)=>`<article class="criteria-compact-row ${on?'':'is-off'}"><button type="button" class="criteria-check ${on?'active':''}" ${attr} aria-pressed="${on}" aria-label="Toggle ${label}">✓</button><input value="${esc(label)}" readonly tabindex="-1">${removable?`<button type="button" class="setting-remove" ${removable} aria-label="Remove ${label}">×</button>`:'<span></span>'}</article>`;
   function leftGeo(){
-    const regions=criteriaState.regions||[];
-    const funders=FUNDER_GROUPS.flatMap(([k,type])=>(criteriaState[k]||[]).map((name,i)=>({k,type,name,i})));
-    const typeSelect=`<select name="group" aria-label="Funder type">${FUNDER_GROUPS.map(([k,t])=>`<option value="${k}">${t}</option>`).join('')}</select>`;
-    const row=(icon,value,key,i,title)=>`<article><i>⋮</i><span>${icon}</span><input value="${esc(value)}" data-rename-idx="${key}:${i}" aria-label="Edit ${esc(value)}"${title?` title="${esc(title)}"`:''}><button type="button" data-remove="${i}" data-key="${key}" aria-label="Remove ${esc(value)}">×</button></article>`;
-    return `<div class="preference-lists">
-      <section class="preference-list"><header><div><h3>Priority geographies</h3><small>Prioritise opportunities in these regions.</small></div>${addBtn('regions','Add region')}</header>${regions.map((r,i)=>row('⌖',r,'regions',i)).join('')}${addRow('regions','Add region')}</section>
-      <section class="preference-list"><header><div><h3>Preferred funders</h3><small>Give higher consideration to these funders.</small></div>${addBtn('funders','Add funder')}</header>${funders.map(f=>row('▥',f.name,f.k,f.i,f.type)).join('')}${addRow('funders','Add funder',typeSelect)}</section>
-    </div>`;
-  }
-
-  function leftOut(){
-    const arr=criteriaState.knockouts||[], shown=expanded.knockouts?arr:arr.slice(0,PREVIEW), l=criteriaState.languages, extra=criteriaState.extraLanguages||[];
-    const langRow=(label,attr,on,removable)=>`<article class="criteria-compact-row ${on?'':'is-off'}"><button type="button" class="criteria-check ${on?'active':''}" ${attr} aria-pressed="${on}" aria-label="Toggle ${label}">✓</button><input value="${esc(label)}" readonly tabindex="-1">${removable?`<button type="button" class="setting-remove" ${removable} aria-label="Remove ${label}">×</button>`:'<span></span>'}</article>`;
-    return `${aiNote()}<div class="exclusion-groups"><section class="criteria-setting-group"><header><div><h3>Exclusion rules</h3></div>${addBtn('knockouts')}</header><div>${shown.map(item=>{const i=arr.indexOf(item);return `<article class="criteria-compact-row ${item.enabled?'':'is-off'}"><button type="button" class="criteria-check ${item.enabled?'active':''}" data-toggle="${i}" data-key="knockouts" aria-pressed="${item.enabled}" aria-label="Toggle ${esc(item.label)}">✓</button><textarea rows="1" class="crit-field" data-rename-idx="knockouts:${i}" aria-label="Edit rule">${esc(item.label)}</textarea>${codeMark(CODE_KNOCKOUTS.includes(item.label))}<button type="button" class="setting-remove" data-remove="${i}" data-key="knockouts" aria-label="Remove ${esc(item.label)}">×</button></article>`}).join('')}${moreBtn('knockouts',arr.length)}${addRow('knockouts','Add rule')}</div></section>
+    const regions=criteriaState.regions||[], l=criteriaState.languages, extra=criteriaState.extraLanguages||[];
+    return `<div class="geography-language-editor"><div class="preference-lists">
+      <section class="preference-list"><header><div><h3>Priority geographies</h3><small>Prioritise opportunities in these regions.</small></div>${addBtn('regions','Add region')}</header>${regions.map((r,i)=>prefRow('⌖',r,'regions',i)).join('')}${addRow('regions','Add region')}</section></div>
       <section class="language-rules"><header><div><h3>Languages Aceso delivers in</h3><small>Active languages are accepted; French notices go to human review.</small></div>${addBtn('extraLanguages','Add language')}</header><div>
         ${langRow('English','data-lang="english"',l.english)}${langRow('Spanish','data-lang="spanish"',l.spanish)}${langRow('Portuguese','data-lang="portuguese"',l.portuguese)}${langRow('French','data-lang="frenchReview"',l.frenchReview)}
         ${extra.map((x,i)=>langRow(x,`data-extra-lang="${i}"`,true,`data-remove="${i}" data-key="extraLanguages"`)).join('')}${addRow('extraLanguages','Add language')}
       </div></section></div>`;
+  }
+  function leftFunders(){
+    const funders=FUNDER_GROUPS.flatMap(([k,type])=>(criteriaState[k]||[]).map((name,i)=>({k,type,name,i})));
+    const typeSelect=`<select name="group" aria-label="Funder type">${FUNDER_GROUPS.map(([k,t])=>`<option value="${k}">${t}</option>`).join('')}</select>`;
+    return `<div class="preference-lists funder-editor"><section class="preference-list"><header><div><h3>Preferred funders</h3><small>Give higher consideration to these institutions.</small></div>${addBtn('funders','Add funder')}</header>${funders.map(f=>prefRow('▥',f.name,f.k,f.i,f.type)).join('')}${addRow('funders','Add funder',typeSelect)}</section></div>`;
+  }
+
+  function leftOut(){
+    const arr=criteriaState.knockouts||[], shown=expanded.knockouts?arr:arr.slice(0,PREVIEW);
+    return `${aiNote()}<div class="exclusion-groups"><section class="criteria-setting-group"><header><div><h3>Exclusion rules</h3></div>${addBtn('knockouts')}</header><div>${shown.map(item=>{const i=arr.indexOf(item);return `<article class="criteria-compact-row ${item.enabled?'':'is-off'}"><button type="button" class="criteria-check ${item.enabled?'active':''}" data-toggle="${i}" data-key="knockouts" aria-pressed="${item.enabled}" aria-label="Toggle ${esc(item.label)}">✓</button><textarea rows="1" class="crit-field" data-rename-idx="knockouts:${i}" aria-label="Edit rule">${esc(item.label)}</textarea>${codeMark(CODE_KNOCKOUTS.includes(item.label))}<button type="button" class="setting-remove" data-remove="${i}" data-key="knockouts" aria-label="Remove ${esc(item.label)}">×</button></article>`}).join('')}${moreBtn('knockouts',arr.length)}${addRow('knockouts','Add rule')}</div></section></div>`;
   }
 
   function leftFlag(){
@@ -170,22 +174,30 @@
   }
 
   const PAGES=[
-    {nav:'Focus & Activities',reset:['focusAreas','activities','keywords'],title:'What makes an opportunity a fit?',purpose:'Set the themes and work types the agent should prioritize.',left:leftFocus,
-      agent:[['Read beyond keywords','Compares objectives and deliverables with Aceso’s approved focus areas.'],['Score the real scope','Separates core, adjacent and out-of-scope work, from 0 to 100.']],
-      human:[['Maintain the focus','Approves the themes and activities the agent should recognize.'],['Review strategic exceptions','Decides when adjacent work is still worth pursuing.']],
-      rule:'A keyword match never overrides the actual deliverables or applicant type.',example:'A notice mentions health systems but only purchases equipment. The agent treats the deliverables—not the title—as the deciding evidence.'},
-    {nav:'Geography & Funders',reset:['regions','fundersMDB','fundersPhilanthropic','fundersGov','fundersUS'],title:'Where and with whom does Aceso want to work?',purpose:'Use a few preferences to guide scoring without overcomplicating setup.',left:leftGeo,
-      agent:[['Add scoring context','Raises opportunities that match preferred geographies and funders.'],['Protect valid exceptions','Keeps other opportunities visible when the substantive fit is strong.']],
-      human:[['Confirm current priorities','Updates markets and funders as Business Development priorities change.'],['Validate a partner route','Confirms whether Aceso can participate through a local partner.']],
-      rule:'A preference improves ranking; it does not create an automatic exclusion.',example:'A World Bank opportunity in Indonesia ranks higher, while a strong-fit opportunity from another funder remains visible.'},
-    {nav:'Excluded Outright',reset:['knockouts','languages.english','languages.spanish','languages.portuguese','languages.frenchReview','extraLanguages'],title:'Excluded outright',purpose:'Only clear hard-stop conditions should exclude a notice automatically.',left:leftOut,
-      agent:[['Apply explicit rules only','Excludes a notice only when it clearly meets an active hard stop. Rules marked “code” are checked on every search.'],['Keep the decision traceable','Saves the exact rule with every excluded notice.']],
-      human:[['Audit exclusions','Can reopen a case from Discarded when the source was incomplete or ambiguous.'],['Approve new hard stops','Decides which rules may exclude without prior review.']],
-      rule:'When evidence is incomplete or ambiguous, keep the opportunity and flag it for review.',example:'A hospital-equipment tender is excluded as goods-only procurement, with the matching rule saved on the record.'},
+    {nav:'Focus Areas',reset:['focusAreas','keywords'],title:'What should the agent look for?',purpose:'Choose the health-system themes that define a strong strategic fit.',left:leftFocus,
+      agent:[['Collect from approved sources','Gathers open notices from the sources included on the last page.'],['Read the full scope','Compares objectives and deliverables with these focus areas—not only titles or keyword matches.'],['Explain thematic fit','Scores the fit from 0 to 100 and states which themes match.']],
+      human:[['Search with thematic terms','Analysts currently visit each platform and repeat searches using their own combinations of keywords.'],['Read the TOR or RFP','They open each notice and interpret whether the apparent match is substantive.'],['Apply institutional judgment','They decide whether an adjacent theme is strategically worth pursuing.']],
+      rule:'A keyword match never overrides the actual deliverables or applicant type.',example:'A notice mentions health systems but only purchases equipment. The agent detects the mismatch; the analyst confirms the exclusion.'},
+    {nav:'Activities',reset:['activities'],title:'What kind of work does Aceso deliver?',purpose:'Define the service types and assignments the agent should recognize as relevant.',left:leftActivities,
+      agent:[['Extract expected activities','Reads the scope, deliverables and outputs requested by the funder.'],['Classify the service type','Tells advisory, research, evaluation and capacity-building work apart from unrelated work.'],['Compare the delivery model','Checks whether the assignment matches the activities listed here.']],
+      human:[['Review deliverables manually','Analysts currently read the scope line by line to understand what the client is truly buying.'],['Compare with past work','They rely on experience and memory to determine whether Aceso has delivered something similar.'],['Resolve unusual cases','They decide whether a less common activity is still strategically viable.']],
+      rule:'The activity is determined by the deliverables, not by broad language in the title.',example:'An opportunity mentions advisory support but primarily requests logistics. The agent flags the mismatch; the analyst validates the classification.'},
+    {nav:'Geography & Languages',reset:['regions','languages.english','languages.spanish','languages.portuguese','languages.frenchReview','extraLanguages'],title:'Where can Aceso credibly deliver?',purpose:'Set priority geographies and the languages Aceso can use for delivery and submission.',left:leftGeo,
+      agent:[['Extract location and language','Reads the country, region and submission language of each notice.'],['Compare with configured coverage','Gives extra weight to priority geographies and checks the language against the accepted list.'],['Flag participation constraints','Surfaces local-registration or in-country presence requirements.']],
+      human:[['Filter and interpret locations','Analysts currently review country and regional eligibility across each platform.'],['Confirm language capability','They check whether the proposal and delivery can be supported in the required language.'],['Validate a partner route','They determine whether Aceso can participate through a consortium or local partner.']],
+      rule:'A geographic preference guides ranking; unclear eligibility requires human review.',example:'A Rwanda notice requires local registration but accepts consortiums. The agent keeps it visible; the analyst validates the partner route.'},
+    {nav:'Funders',reset:['fundersMDB','fundersPhilanthropic','fundersGov','fundersUS'],title:'Which institutions should rank higher?',purpose:'Maintain a clear list of preferred funders without hiding strong opportunities from others.',left:leftFunders,
+      agent:[['Identify the funding institution','Reads the funder named in each notice.'],['Apply priority context','Raises opportunities from preferred institutions in the ranking.'],['Preserve strong exceptions','Keeps high-fit opportunities from other funders visible.']],
+      human:[['Recognize familiar institutions','The team currently relies on experience to identify priority funders and known processes.'],['Consider relationship history','They weigh previous work, familiarity and strategic value.'],['Assess unfamiliar funders','They investigate whether a new institution is credible and worth pursuing.']],
+      rule:'A preferred funder improves ranking; it never creates an automatic exclusion.',example:'A World Bank opportunity ranks higher, while a strong thematic fit from another funder remains available for human review.'},
+    {nav:'Excluded Outright',reset:['knockouts'],title:'What should stop automatically?',purpose:'Use only clear hard-stop conditions to exclude an opportunity without prior review.',left:leftOut,
+      agent:[['Test every hard stop','Checks each notice against every active exclusion rule. Rules marked “code” are checked on every search.'],['Require clear evidence','Excludes only when the notice clearly meets the rule.'],['Record the reason','Saves the matched rule with every excluded notice, visible in Discarded.']],
+      human:[['Screen notices one by one','Analysts currently identify cancellations, duplicates, low-value work and scope mismatches manually.'],['Interpret ambiguous wording','They decide whether a condition is truly disqualifying or needs clarification.'],['Recover exceptions','They can reopen a notice when the evidence was incomplete or incorrectly interpreted.']],
+      rule:'When evidence is incomplete or ambiguous, keep the opportunity and flag it for review.',example:'A hospital-equipment tender is identified as goods-only procurement. The agent records the rule; the analyst can confirm or reopen it.'},
     {nav:'Kept but Flagged',reset:['reviewFlags','budget','deadlineDays'],title:'Kept, but flagged',purpose:'Define what should remain visible but require human review.',left:leftFlag,
-      agent:[['Document the concern','Shows the issue, evidence and missing information.'],['Route for a decision','Keeps the opportunity in review instead of silently rejecting it.']],
-      human:[['Resolve the ambiguity','Validates partner, budget, timing and team capacity.'],['Choose the next step','Keeps, prioritizes or discards the opportunity with a recorded reason.']],
-      rule:'Undisclosed value, short timing and uncertain eligibility always require human review.',example:'A strong-fit EOI has no budget and closes in 12 days. The agent keeps it visible and flags both concerns.'},
+      agent:[['Detect uncertainty','Identifies missing budgets, short deadlines, incomplete documents and unclear eligibility.'],['Document the concern','Shows each flag on the opportunity so the reviewer sees it first.'],['Keep it in review','Routes the opportunity to a person instead of silently rejecting it.']],
+      human:[['Notice uncertainty while reading','Analysts currently discover missing or contradictory information during manual review.'],['Investigate the open question','They consult the source, colleagues or funder when needed.'],['Choose the next step','They keep, prioritise or discard the opportunity with a recorded reason.']],
+      rule:'Undisclosed value, short timing and uncertain eligibility always require human review.',example:'A strong-fit EOI has no budget and closes in 12 days. The agent flags both concerns; the analyst decides whether the effort is viable.'},
     {nav:'Sources & Monitoring',reset:['sources'],title:'Where opportunities come from',purpose:'Six public sources, and how the monitoring layer works.',left:leftSources,sourcesPage:true}
   ];
 
@@ -196,9 +208,9 @@
         :{eyebrow:'WHEN MUST A HUMAN DECIDE?',title:'Every pursuit decision belongs to people.',steps:[['Review recommendations','Recommended and Decision needed arrive ready to read.'],['Decide pursuit and staffing','Approve, reject or recover — with the reason kept.'],['Own the submission','Proposals move through Pipeline under the team’s control.']],box:`<aside class="worked-example nb-rule-box"><small>DECISION RULE</small><p><b>The agent recommends and documents. It never makes the final pursuit or submission decision.</b></p></aside>`};
       return `<article class="notebook-page playbook-page nb-right">${ownerTabs()}<div class="nb-explain"><p class="eyebrow">${e.eyebrow}</p><h2>${e.title}</h2><ol class="nb-steps">${e.steps.map((s,i)=>`<li style="--i:${i}"><i>${i+1}</i><span><b>${s[0]}</b><p>${s[1]}</p></span></li>`).join('')}</ol>${e.box}</div></article>`;
     }
-    return `<article class="notebook-page playbook-page">${ownerTabs()}<p class="eyebrow">${owner==='agent'?'AGENT LENS':'HUMAN LENS'}</p><h2>${owner==='agent'?'What happens automatically':'What stays with the team'}</h2><div class="notebook-actions">${p[owner].map((x,i)=>`<div><i>${String(i+1).padStart(2,'0')}</i><span><b>${x[0]}</b><p>${x[1]}</p></span></div>`).join('')}</div><aside class="worked-example"><small>SEE IT IN PRACTICE</small><p>${p.example}</p></aside></article>`;
+    return `<article class="notebook-page playbook-page">${ownerTabs()}<p class="eyebrow">${owner==='agent'?'HOW THE AGENT WORKS':'HOW THE TEAM WORKS TODAY'}</p><h2>${owner==='agent'?'How the agent searches and evaluates':'How analysts handle this manually'}</h2><div class="notebook-actions">${p[owner].map((x,i)=>`<div><i>${String(i+1).padStart(2,'0')}</i><span><b>${x[0]}</b><p>${x[1]}</p></span></div>`).join('')}</div><aside class="worked-example"><small>SEE BOTH IN PRACTICE</small><p>${p.example}</p><b class="we-output"><i></i>${owner==='agent'?'Agent output: prioritised result with its reasons':'Human output: validated interpretation and decision'}</b></aside></article>`;
   }
-  const ownerTabs=()=>`<div class="owner-tabs" role="tablist" aria-label="Explanation view"><button type="button" data-owner="agent" role="tab" aria-selected="${owner==='agent'}" class="${owner==='agent'?'active':''}"><span>✦</span> Agent</button><button type="button" data-owner="human" role="tab" aria-selected="${owner==='human'}" class="${owner==='human'?'active':''}"><span>◎</span> Human</button></div>`;
+  const ownerTabs=()=>`<div class="owner-tabs" role="tablist" aria-label="Explanation view"><button type="button" data-owner="agent" role="tab" aria-selected="${owner==='agent'}" class="${owner==='agent'?'active':''}"><span>✦</span> Agent</button><button type="button" data-owner="human" role="tab" aria-selected="${owner==='human'}" class="${owner==='human'?'active':''}"><span>◎</span> Human today</button></div>`;
 
   function animateNotebook(view){
     const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;

@@ -115,3 +115,5 @@ svg text{font-family:var(--sans)!important}
 :is(#todayView .hero-copy h1 .hero-accent,#todayView .hero-copy h1 .today-nine,#_ts#_ts#_ts#_ts){font-weight:700!important}
 :is(.complete-record-hero .record-origin h1,#_ts#_ts#_ts#_ts){font-weight:700!important;font-size:32px!important;line-height:1.2!important}
 @media(max-width:760px){:is(.complete-record-hero .record-origin h1,#_ts#_ts#_ts#_ts){font-size:28px!important}}
+/* Pipeline proposal workspace: readiness is a key figure. */
+:is(.proposal-workspace-summary>div:first-child>b,#_ts#_ts#_ts#_ts){font-size:var(--fs-m)!important;font-weight:600!important}
